@@ -28,7 +28,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-
+// Passport setup (Google)
+// Note: In a real multi-tenant app, you'd use the tenant's own Google credentials
+// but for MVP we use our shared ones.
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID || 'DU_CLIENT_ID',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'DUMMY_SECRET',
