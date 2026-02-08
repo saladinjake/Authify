@@ -140,6 +140,113 @@ app.post('/auth/login', tenantGuard, (req: any, res) => {
     });
 });
 
+// Google OAuth Routes
+app.get('/auth/google', (req: any, res, next) => {
+    const { api_key, state } = req.query; // state should be the tenant_id or redirect_uri
+    passport.authenticate('google', {
+        scope: ['profile', 'email'],
+        state: state || api_key
+    })(req, res, next);
+});
+
+app.get('/auth/google/callback',
+    passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth_failed' }),
+    (req: any, res) => {
+        const user = req.user;
+        const tenantId = req.query.state;
+        const token = signJWT({ uid: user.id, tid: tenantId }, jwks[0].kid);
+
+        // Redirect back to frontend with token
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+    }
+);
+
+// Magic Link Route
+app.post('/auth/magic-link', tenantGuard, (req: any, res) => {
+    const { email } = req.body;
+    const tenant = req.tenant;
+
+    // In a real app, send an email. For MVP, we just return the link or simulate success.
+    const token = jwt.sign({ email, tid: tenant.id }, JWT_SECRET, { expiresIn: '15m' });
+    console.log(`[Authify] Magic Link generated for ${email}: /auth/verify?token=${token}`);
+
+    res.json({ message: 'MAGIC_LINK_SENT', debug_token: token });
+});
+
+app.get('/auth/verify', (req: any, res) => {
+    const { token } = req.query;
+    try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+
+        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [decoded.email, decoded.tid], (err, user: any) => {
+            if (!user) {
+                // Auto-signup if user doesn't exist? (Optional behavior)
+                const uid = 'u_' + crypto.randomBytes(4).toString('hex');
+                db.run('INSERT INTO users (id, tenant_id, email, name) VALUES (?, ?, ?, ?)',
+                    [uid, decoded.tid, decoded.email, decoded.email.split('@')[0]],
+                    () => {
+                        const authToken = signJWT({ uid, tid: decoded.tid }, jwks[0].kid);
+                        res.json({ token: authToken, user: { id: uid, email: decoded.email } });
+                    }
+                );
+            } else {
+                const authToken = signJWT({ uid: user.id, tid: decoded.tid }, jwks[0].kid);
+                res.json({ token: authToken, user });
+            }
+        });
+    } catch (e) {
+        res.status(401).json({ error: 'INVALID_OR_EXPIRED_TOKEN' });
+    }
+});
+
+// 2.1 MFA Verify
+app.post('/auth/mfa/verify', tenantGuard, (req: any, res) => {
+    const { mfa_token, code } = req.body;
+    const tenant = req.tenant;
+
+    try {
+        const decoded: any = jwt.verify(mfa_token, JWT_SECRET);
+
+        // Simulation: any 6 digit code works
+        if (code.length !== 6) return res.status(400).json({ error: 'INVALID_MFA_CODE' });
+
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
+            db.run('UPDATE tenants SET usage_count = usage_count + 1 WHERE id = ?', [tenant.id]);
+            const token = signJWT({ uid: decoded.uid, tid: tenant.id }, jwks[0].kid);
+            res.json({ token, user });
+        });
+    } catch (e) {
+        res.status(401).json({ error: 'EXPIRED_MFA_TOKEN' });
+    }
+});
+
+
+app.post('/admin/upgrade', tenantGuard, (req: any, res) => {
+    const tenant = req.tenant;
+    // tODO HERE WE NEED TO ADD PAYSTACK TRANSACTION IN THE NEXT PLAN
+    const { reference } = req.body;
+
+    if (reference) {
+        db.run('UPDATE tenants SET plan = "pro", usage_count = 0 WHERE id = ?', [tenant.id], () => {
+            res.json({ message: 'Upgraded to PRO successfully', plan: 'pro' });
+        });
+    } else {
+        res.status(400).json({ error: 'PAYMENT_FAILED' });
+    }
+});
+
+// 6. Manual Key Rotation
+app.post('/admin/rotate-keys', tenantGuard, (req, res) => {
+    rotateKeys();
+    res.json({ message: 'Keys rotated', current_kid: jwks[0].kid });
+});
+
+// 3. JWKS
+app.get('/.well-known/jwks.json', (req, res) => {
+    res.json({ keys: jwks });
+});
+
 // 4. Tenant Info (for Dashboard)
 app.get('/admin/me', tenantGuard, (req: any, res) => {
     res.json(req.tenant);
