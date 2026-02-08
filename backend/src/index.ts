@@ -33,29 +33,22 @@ function rotateKeys() {
 }
 
 // Middleware: Multi-tenant Auth Guard & Rate Limiter
-const tenantGuard = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+const tenantGuard = (req: any, res: any, next: any) => {
     const apiKey = req.headers['x-api-key'] || req.headers['X-API-KEY'] || req.query.api_key;
-    if (!apiKey) {
-        res.status(401).json({ error: 'MISSING_API_KEY' });
-        return;
-    }
+    if (!apiKey) return res.status(401).json({ error: 'MISSING_API_KEY' });
 
-    db.get('SELECT * FROM tenants WHERE api_key = ?', [apiKey], (err: Error | null, tenant: any) => {
-        if (err || !tenant) {
-            res.status(401).json({ error: 'INVALID_API_KEY' });
-            return;
-        }
+    db.get('SELECT * FROM tenants WHERE api_key = ?', [apiKey], (err, tenant: any) => {
+        if (err || !tenant) return res.status(401).json({ error: 'INVALID_API_KEY' });
 
         // Rate Limiting Logic (FREE tier: 200 logins/signups)
         if (tenant.plan === 'free' && tenant.usage_count >= 200) {
-            res.status(402).json({
+            return res.status(402).json({
                 error: 'RATE_LIMIT_EXCEEDED',
                 message: 'Free tier limit reached. Please upgrade to a paid plan via the dashboard.'
             });
-            return;
         }
 
-        (req as any).tenant = tenant;
+        req.tenant = tenant;
         next();
     });
 };
@@ -80,11 +73,11 @@ passport.use(new GoogleStrategy({
     callbackURL: `http://localhost:${PORT}/auth/google/callback`,
     passReqToCallback: true
 },
-    async (req: any, accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any) => void) => {
+    async (req: any, accessToken, refreshToken, profile, done) => {
         const email = profile.emails?.[0].value;
         const tenantId = req.query.state; // We use state to pass tenant_id through OAuth
 
-        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err: Error | null, user: any) => {
+        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err, user: any) => {
             if (user) return done(null, user);
 
             const newUser = {
@@ -97,27 +90,24 @@ passport.use(new GoogleStrategy({
 
             db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url) VALUES (?, ?, ?, ?, ?)',
                 [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url],
-                (err: Error | null) => done(null, newUser)
+                () => done(null, newUser)
             );
         });
     }
 ));
 
 
-app.post('/auth/signup', tenantGuard, async (req: express.Request, res: express.Response): Promise<void> => {
+app.post('/auth/signup', tenantGuard, async (req: any, res) => {
     const { email, password, name } = req.body;
-    const tenant = (req as any).tenant;
+    const tenant = req.tenant;
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const uid = 'u_' + crypto.randomBytes(4).toString('hex');
 
     db.run('INSERT INTO users (id, tenant_id, email, password, name) VALUES (?, ?, ?, ?, ?)',
         [uid, tenant.id, email, hashedPassword, name],
-        (err: Error | null) => {
-            if (err) {
-                res.status(400).json({ error: 'USER_ALREADY_EXISTS' });
-                return;
-            }
+        (err) => {
+            if (err) return res.status(400).json({ error: 'USER_ALREADY_EXISTS' });
 
             // Increment usage
             db.run('UPDATE tenants SET usage_count = usage_count + 1 WHERE id = ?', [tenant.id]);
@@ -129,23 +119,21 @@ app.post('/auth/signup', tenantGuard, async (req: express.Request, res: express.
 });
 
 
-app.post('/auth/login', tenantGuard, (req: express.Request, res: express.Response): void => {
+app.post('/auth/login', tenantGuard, (req: any, res) => {
     const { email, password } = req.body;
-    const tenant = (req as any).tenant;
+    const tenant = req.tenant;
 
-    db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenant.id], async (err: Error | null, user: any) => {
+    db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenant.id], async (err, user: any) => {
         if (!user || !(await bcrypt.compare(password, user.password))) {
-            res.status(401).json({ error: 'INVALID_CREDENTIALS' });
-            return;
+            return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
         }
 
         // Check if MFA enabled for tenant or user
         if (tenant.mfa_enabled) {
-            res.json({
+            return res.json({
                 mfa_required: true,
                 mfa_token: jwt.sign({ uid: user.id, tid: tenant.id }, JWT_SECRET, { expiresIn: '5m' })
             });
-            return;
         }
 
         // Increment usage
@@ -157,7 +145,7 @@ app.post('/auth/login', tenantGuard, (req: express.Request, res: express.Respons
 });
 
 // Google OAuth Routes
-app.get('/auth/google', (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+app.get('/auth/google', (req: any, res, next) => {
     const { api_key, state } = req.query; // state should be the tenant_id or redirect_uri
     passport.authenticate('google', {
         scope: ['profile', 'email'],
@@ -167,8 +155,8 @@ app.get('/auth/google', (req: express.Request, res: express.Response, next: expr
 
 app.get('/auth/google/callback',
     passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth_failed' }),
-    (req: express.Request, res: express.Response): void => {
-        const user = (req as any).user;
+    (req: any, res) => {
+        const user = req.user;
         const tenantId = req.query.state;
         const token = signJWT({ uid: user.id, tid: tenantId }, jwks[0].kid);
 
@@ -179,9 +167,9 @@ app.get('/auth/google/callback',
 );
 
 // Magic Link Route
-app.post('/auth/magic-link', tenantGuard, (req: express.Request, res: express.Response): void => {
+app.post('/auth/magic-link', tenantGuard, (req: any, res) => {
     const { email } = req.body;
-    const tenant = (req as any).tenant;
+    const tenant = req.tenant;
 
     // In a real app, send an email. For MVP, we just return the link or simulate success.
     const token = jwt.sign({ email, tid: tenant.id }, JWT_SECRET, { expiresIn: '15m' });
@@ -190,18 +178,18 @@ app.post('/auth/magic-link', tenantGuard, (req: express.Request, res: express.Re
     res.json({ message: 'MAGIC_LINK_SENT', debug_token: token });
 });
 
-app.get('/auth/verify', (req: express.Request, res: express.Response): void => {
+app.get('/auth/verify', (req: any, res) => {
     const { token } = req.query;
     try {
-        const decoded: any = jwt.verify(token as string, JWT_SECRET);
+        const decoded: any = jwt.verify(token, JWT_SECRET);
 
-        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [decoded.email, decoded.tid], (err: Error | null, user: any) => {
+        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [decoded.email, decoded.tid], (err, user: any) => {
             if (!user) {
                 // Auto-signup if user doesn't exist? (Optional behavior)
                 const uid = 'u_' + crypto.randomBytes(4).toString('hex');
                 db.run('INSERT INTO users (id, tenant_id, email, name) VALUES (?, ?, ?, ?)',
                     [uid, decoded.tid, decoded.email, decoded.email.split('@')[0]],
-                    (err: Error | null) => {
+                    () => {
                         const authToken = signJWT({ uid, tid: decoded.tid }, jwks[0].kid);
                         res.json({ token: authToken, user: { id: uid, email: decoded.email } });
                     }
@@ -217,20 +205,17 @@ app.get('/auth/verify', (req: express.Request, res: express.Response): void => {
 });
 
 // 2.1 MFA Verify
-app.post('/auth/mfa/verify', tenantGuard, (req: express.Request, res: express.Response): void => {
+app.post('/auth/mfa/verify', tenantGuard, (req: any, res) => {
     const { mfa_token, code } = req.body;
-    const tenant = (req as any).tenant;
+    const tenant = req.tenant;
 
     try {
         const decoded: any = jwt.verify(mfa_token, JWT_SECRET);
 
         // Simulation: any 6 digit code works
-        if (code.length !== 6) {
-            res.status(400).json({ error: 'INVALID_MFA_CODE' });
-            return;
-        }
+        if (code.length !== 6) return res.status(400).json({ error: 'INVALID_MFA_CODE' });
 
-        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err: Error | null, user: any) => {
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
             db.run('UPDATE tenants SET usage_count = usage_count + 1 WHERE id = ?', [tenant.id]);
             const token = signJWT({ uid: decoded.uid, tid: tenant.id }, jwks[0].kid);
             res.json({ token, user });
@@ -241,13 +226,13 @@ app.post('/auth/mfa/verify', tenantGuard, (req: express.Request, res: express.Re
 });
 
 
-app.post('/admin/upgrade', tenantGuard, (req: express.Request, res: express.Response): void => {
-    const tenant = (req as any).tenant;
+app.post('/admin/upgrade', tenantGuard, (req: any, res) => {
+    const tenant = req.tenant;
     // tODO HERE WE NEED TO ADD PAYSTACK TRANSACTION IN THE NEXT PLAN
     const { reference } = req.body;
 
     if (reference) {
-        db.run('UPDATE tenants SET plan = "pro", usage_count = 0 WHERE id = ?', [tenant.id], (err: Error | null) => {
+        db.run('UPDATE tenants SET plan = "pro", usage_count = 0 WHERE id = ?', [tenant.id], () => {
             res.json({ message: 'Upgraded to PRO successfully', plan: 'pro' });
         });
     } else {
@@ -256,23 +241,20 @@ app.post('/admin/upgrade', tenantGuard, (req: express.Request, res: express.Resp
 });
 
 // 6. Manual Key Rotation
-app.post('/admin/rotate-keys', tenantGuard, (req: express.Request, res: express.Response): void => {
+app.post('/admin/rotate-keys', tenantGuard, (req, res) => {
     rotateKeys();
     res.json({ message: 'Keys rotated', current_kid: jwks[0].kid });
 });
 
 // 3. JWKS
-app.get('/.well-known/jwks.json', (req: express.Request, res: express.Response): void => {
+app.get('/.well-known/jwks.json', (req, res) => {
     res.json({ keys: jwks });
 });
 
 // 4. Session Verification
-app.get('/auth/session', tenantGuard, (req: express.Request, res: express.Response): void => {
+app.get('/auth/session', tenantGuard, (req: any, res) => {
     const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        res.status(401).json({ error: 'NO_TOKEN_PROVIDED' });
-        return;
-    }
+    if (!authHeader) return res.status(401).json({ error: 'NO_TOKEN_PROVIDED' });
 
     const token = authHeader.split(' ')[1];
     try {
@@ -286,11 +268,8 @@ app.get('/auth/session', tenantGuard, (req: express.Request, res: express.Respon
 
         const decoded: any = jwt.verify(token, signingKey);
 
-        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err: Error | null, user: any) => {
-            if (err || !user) {
-                res.status(401).json({ error: 'INVALID_SESSION' });
-                return;
-            }
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
+            if (err || !user) return res.status(401).json({ error: 'INVALID_SESSION' });
             res.json({ user });
         });
     } catch (e: any) {
@@ -300,13 +279,13 @@ app.get('/auth/session', tenantGuard, (req: express.Request, res: express.Respon
 });
 
 // 5. Tenant Info (for Dashboard)
-app.get('/admin/me', tenantGuard, (req: express.Request, res: express.Response): void => {
-    res.json((req as any).tenant);
+app.get('/admin/me', tenantGuard, (req: any, res) => {
+    res.json(req.tenant);
 });
 
 // Start Server
 initDb().then(() => {
-    app.listen(PORT, (): void => {
+    app.listen(PORT, () => {
         console.log(`\n🚀 Authify Enterprise Backend running on http://localhost:${PORT}`);
         console.log(`Default Dev Tenant API Key: dev_api_key_123`);
     });
