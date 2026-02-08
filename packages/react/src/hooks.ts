@@ -5,7 +5,14 @@ export const useAuth = () => {
     const client = useAuthClient();
     const state = useAuthState();
 
-    const signIn = useCallback((email: string) => client.signInWithEmail(email), [client]);
+    const signIn = useCallback((credentials: { email: string; password?: string } | string) => {
+        if (typeof credentials === 'string') {
+            return client.signInWithEmail(credentials);
+        }
+        return client.signIn(credentials);
+    }, [client]);
+
+    const signUp = useCallback((data: { email: string; password?: string; name: string }) => client.signUp(data), [client]);
     const signOut = useCallback(() => client.signOut(), [client]);
     const signInWithProvider = useCallback((provider: 'google' | 'github') => client.signInWithProvider(provider), [client]);
 
@@ -22,6 +29,7 @@ export const useAuth = () => {
         session: state.session,
         error: state.error,
         signIn,
+        signUp,
         signOut,
         signInWithProvider,
         verifyMFA,

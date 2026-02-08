@@ -22,9 +22,17 @@ declare const useAuth: () => {
     user: _authify_core.User | null;
     session: _authify_core.AuthSession | null;
     error: string | null;
-    signIn: (email: string) => Promise<void>;
+    signIn: (credentials: {
+        email: string;
+        password?: string;
+    } | string) => Promise<void>;
+    signUp: (data: {
+        email: string;
+        password?: string;
+        name: string;
+    }) => Promise<void>;
     signOut: () => Promise<void>;
-    signInWithProvider: (provider: "google" | "github") => Promise<void>;
+    signInWithProvider: (provider: 'google' | 'github') => Promise<void>;
     verifyMFA: (code: string) => Promise<void>;
 };
 declare const useUser: () => {

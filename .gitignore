@@ -1,3 +1,20 @@
 node_modules
 .next/**
 .env
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Angular cache
+.angular/
+examples/angular-demo/.angular/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

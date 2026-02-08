@@ -39,7 +39,13 @@ import { useCallback } from "react";
 var useAuth = () => {
   const client = useAuthClient();
   const state = useAuthState();
-  const signIn = useCallback((email) => client.signInWithEmail(email), [client]);
+  const signIn = useCallback((credentials) => {
+    if (typeof credentials === "string") {
+      return client.signInWithEmail(credentials);
+    }
+    return client.signIn(credentials);
+  }, [client]);
+  const signUp = useCallback((data) => client.signUp(data), [client]);
   const signOut = useCallback(() => client.signOut(), [client]);
   const signInWithProvider = useCallback((provider) => client.signInWithProvider(provider), [client]);
   const verifyMFA = useCallback((code) => client.verifyMFA(code), [client]);
@@ -54,6 +60,7 @@ var useAuth = () => {
     session: state.session,
     error: state.error,
     signIn,
+    signUp,
     signOut,
     signInWithProvider,
     verifyMFA
@@ -68,20 +75,80 @@ var useUser = () => {
 import { useState as useState2 } from "react";
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
 var SignIn = () => {
-  const { signIn, signInWithProvider, error, isLoaded, isAwaitingVerification } = useAuth();
+  const { signIn, signUp, signInWithProvider, error, isLoaded, isAwaitingVerification, isMFAChallenge, verifyMFA } = useAuth();
+  const [mode, setMode] = useState2("signin");
   const [email, setEmail] = useState2("");
+  const [password, setPassword] = useState2("");
+  const [name, setName] = useState2("");
+  const [mfaCode, setMfaCode] = useState2("");
   const [loading, setLoading] = useState2(false);
   if (!isLoaded) return /* @__PURE__ */ jsx2("div", { children: "Loading..." });
-  const handleEmailLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await signIn(email);
+      if (mode === "signin") {
+        if (password) {
+          await signIn({ email, password });
+        } else {
+          await signIn(email);
+        }
+      } else {
+        if (password) {
+          await signUp({ email, password, name });
+        } else {
+          await signIn(email);
+        }
+      }
     } catch (err) {
+      console.error("Auth error:", err);
     } finally {
       setLoading(false);
     }
   };
+  const handleMFASubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await verifyMFA(mfaCode);
+    } catch (err) {
+      console.error("MFA error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  if (isMFAChallenge) {
+    return /* @__PURE__ */ jsxs("div", { className: "authify-card", style: { textAlign: "center" }, children: [
+      /* @__PURE__ */ jsx2("div", { style: { fontSize: "48px", marginBottom: "16px" }, children: "\u{1F510}" }),
+      /* @__PURE__ */ jsx2("h2", { className: "authify-title", children: "Two-Factor Authentication" }),
+      /* @__PURE__ */ jsx2("p", { style: { color: "#666", marginBottom: "24px", lineHeight: "1.5" }, children: "Enter the 6-digit code from your authenticator app" }),
+      error && /* @__PURE__ */ jsx2("div", { className: "authify-error", children: error }),
+      /* @__PURE__ */ jsxs("form", { onSubmit: handleMFASubmit, children: [
+        /* @__PURE__ */ jsx2("div", { className: "authify-input-group", children: /* @__PURE__ */ jsx2(
+          "input",
+          {
+            type: "text",
+            value: mfaCode,
+            onChange: (e) => setMfaCode(e.target.value),
+            className: "authify-input",
+            required: true,
+            placeholder: "000000",
+            maxLength: 6,
+            pattern: "[0-9]{6}"
+          }
+        ) }),
+        /* @__PURE__ */ jsx2(
+          "button",
+          {
+            type: "submit",
+            disabled: loading,
+            className: "authify-btn authify-btn-primary",
+            children: loading ? "Verifying..." : "Verify Code"
+          }
+        )
+      ] })
+    ] });
+  }
   if (isAwaitingVerification) {
     return /* @__PURE__ */ jsxs("div", { className: "authify-card", style: { textAlign: "center" }, children: [
       /* @__PURE__ */ jsx2("div", { style: { fontSize: "48px", marginBottom: "16px" }, children: "\u2709\uFE0F" }),
@@ -105,9 +172,23 @@ var SignIn = () => {
     ] });
   }
   return /* @__PURE__ */ jsxs("div", { className: "authify-card", children: [
-    /* @__PURE__ */ jsx2("h2", { className: "authify-title", children: "Sign In" }),
+    /* @__PURE__ */ jsx2("h2", { className: "authify-title", children: mode === "signin" ? "Sign In" : "Sign Up" }),
     error && /* @__PURE__ */ jsx2("div", { className: "authify-error", children: error }),
-    /* @__PURE__ */ jsxs("form", { onSubmit: handleEmailLogin, children: [
+    /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmit, children: [
+      mode === "signup" && /* @__PURE__ */ jsxs("div", { className: "authify-input-group", children: [
+        /* @__PURE__ */ jsx2("label", { className: "authify-label", children: "Name" }),
+        /* @__PURE__ */ jsx2(
+          "input",
+          {
+            type: "text",
+            value: name,
+            onChange: (e) => setName(e.target.value),
+            className: "authify-input",
+            required: true,
+            placeholder: "John Doe"
+          }
+        )
+      ] }),
       /* @__PURE__ */ jsxs("div", { className: "authify-input-group", children: [
         /* @__PURE__ */ jsx2("label", { className: "authify-label", children: "Email" }),
         /* @__PURE__ */ jsx2(
@@ -122,13 +203,26 @@ var SignIn = () => {
           }
         )
       ] }),
+      /* @__PURE__ */ jsxs("div", { className: "authify-input-group", children: [
+        /* @__PURE__ */ jsx2("label", { className: "authify-label", children: "Password (optional)" }),
+        /* @__PURE__ */ jsx2(
+          "input",
+          {
+            type: "password",
+            value: password,
+            onChange: (e) => setPassword(e.target.value),
+            className: "authify-input",
+            placeholder: "Leave blank for magic link"
+          }
+        )
+      ] }),
       /* @__PURE__ */ jsx2(
         "button",
         {
           type: "submit",
           disabled: loading,
           className: "authify-btn authify-btn-primary",
-          children: loading ? "Sending Magic Link..." : "Continue with Email"
+          children: loading ? "Processing..." : password ? mode === "signin" ? "Sign In" : "Sign Up" : "Continue with Email"
         }
       )
     ] }),
@@ -151,7 +245,16 @@ var SignIn = () => {
           children: "Sign in with GitHub"
         }
       )
-    ] })
+    ] }),
+    /* @__PURE__ */ jsx2("div", { style: { marginTop: "16px", textAlign: "center" }, children: /* @__PURE__ */ jsx2(
+      "button",
+      {
+        onClick: () => setMode(mode === "signin" ? "signup" : "signin"),
+        className: "authify-btn authify-btn-secondary",
+        style: { background: "transparent", border: "none", color: "#666", textDecoration: "underline" },
+        children: mode === "signin" ? "Don't have an account? Sign up" : "Already have an account? Sign in"
+      }
+    ) })
   ] });
 };
 

@@ -1,6 +1,9 @@
 // src/api.ts
 var BACKEND_URL = "http://localhost:5000";
 var AuthApi = class {
+  static setUrl(url) {
+    BACKEND_URL = url.startsWith("http") ? url : `http://${url}`;
+  }
   static async sendMagicLink(email, apiKey) {
     const res = await fetch(`${BACKEND_URL}/auth/magic-link`, {
       method: "POST",
@@ -234,6 +237,9 @@ var AuthClient = class {
   config;
   constructor(config) {
     this.config = config;
+    if (config.domain) {
+      AuthApi.setUrl(config.domain);
+    }
     this.store = new AuthStore(config.apiKey);
     this.applyTheme();
   }

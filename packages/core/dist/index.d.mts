@@ -77,6 +77,7 @@ declare class AuthClient {
 declare function createAuthify(config: AuthConfig): AuthClient;
 
 declare class AuthApi {
+    static setUrl(url: string): void;
     static sendMagicLink(email: string, apiKey: string): Promise<void>;
     static verifyMagicLink(token: string): Promise<AuthSession>;
     static login(email: string, password: string, apiKey: string): Promise<any>;
