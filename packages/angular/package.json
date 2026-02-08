@@ -1,0 +1,22 @@
+{
+    "name": "@authify/angular",
+    "version": "0.0.1",
+    "description": "Angular services and components for Authify",
+    "scripts": {
+        "build": "ng-packagr -p ng-package.json"
+    },
+    "peerDependencies": {
+        "@angular/common": ">=14.0.0",
+        "@angular/core": ">=14.0.0",
+        "@angular/forms": ">=14.0.0"
+    },
+    "dependencies": {
+        "@authify/core": "../core",
+        "@angular/forms": ">=14.0.0",
+        "rxjs": "^7.0.0"
+    },
+    "devDependencies": {
+        "ng-packagr": "^17.0.0",
+        "typescript": "^5.2.0"
+    }
+}
