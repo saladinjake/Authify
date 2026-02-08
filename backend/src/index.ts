@@ -34,7 +34,7 @@ function rotateKeys() {
 
 // Middleware: Multi-tenant Auth Guard & Rate Limiter
 const tenantGuard = (req: any, res: any, next: any) => {
-    const apiKey = req.headers['x-api-key'] || req.query.api_key;
+    const apiKey = req.headers['x-api-key'] || req.headers['X-API-KEY'] || req.query.api_key;
     if (!apiKey) return res.status(401).json({ error: 'MISSING_API_KEY' });
 
     db.get('SELECT * FROM tenants WHERE api_key = ?', [apiKey], (err, tenant: any) => {

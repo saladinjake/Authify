@@ -73,6 +73,59 @@ export class AuthApi {
         window.location.href = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
     }
 
+    static async verifyMFA(mfaToken: string, code: string, apiKey: string): Promise<AuthSession> {
+        const res = await fetch(`${BACKEND_URL}/auth/mfa/verify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            },
+            body: JSON.stringify({ mfa_token: mfaToken, code })
+        });
 
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'MFA verification failed');
+        return data;
+    }
 
+    static async validateSession(token: string, apiKey: string): Promise<AuthSession> {
+        const res = await fetch(`${BACKEND_URL}/auth/session`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-API-KEY': apiKey
+            }
+        });
+
+        if (!res.ok) throw new Error('Session invalid');
+        const data = await res.json();
+
+        return {
+            token,
+            user: data.user,
+            expiresAt: Date.now() + 3600000
+        };
+    }
+
+    static async getTenant(apiKey: string): Promise<any> {
+        const res = await fetch(`${BACKEND_URL}/admin/me`, {
+            headers: { 'X-API-KEY': apiKey }
+        });
+        if (!res.ok) throw new Error('Failed to fetch tenant info');
+        return res.json();
+    }
+
+    static async upgradePlan(reference: string, apiKey: string): Promise<any> {
+        const res = await fetch(`${BACKEND_URL}/admin/upgrade`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            },
+            body: JSON.stringify({ reference })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upgrade failed');
+        return data;
+    }
 }
