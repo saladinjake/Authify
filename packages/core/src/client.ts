@@ -8,6 +8,9 @@ export class AuthClient {
 
     constructor(config: AuthConfig) {
         this.config = config;
+        if (config.domain) {
+            AuthApi.setUrl(config.domain);
+        }
         this.store = new AuthStore(config.apiKey);
         this.applyTheme();
     }

@@ -1,10 +1,11 @@
-import { ComponentValue } from '@angular/core';
 import { Component } from '@angular/core';
 import { AuthifyService } from './authify.service';
+import { Observable } from 'rxjs';
+import { AuthState } from '@authify/core';
 
 @Component({
-    selector: 'authify-user-profile',
-    template: `
+  selector: 'authify-user-profile',
+  template: `
     <div *ngIf="state$ | async as state" class="authify-container">
       <div *ngIf="state.status === 'authenticated' && state.user" class="authify-card" style="max-width: 400px;">
         <div class="authify-profile-info">
@@ -43,11 +44,13 @@ import { AuthifyService } from './authify.service';
   `
 })
 export class UserProfileComponent {
-    state$ = this.authify.state$;
+  state$: Observable<AuthState>;
 
-    constructor(private authify: AuthifyService) { }
+  constructor(private authify: AuthifyService) {
+    this.state$ = this.authify.state$;
+  }
 
-    signOut() {
-        this.authify.signOut();
-    }
+  signOut() {
+    this.authify.signOut();
+  }
 }

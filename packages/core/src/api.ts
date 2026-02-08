@@ -1,8 +1,12 @@
 import { User, AuthSession } from './types';
 
-const BACKEND_URL = 'http://localhost:5000';
+let BACKEND_URL = 'http://localhost:5000';
 
 export class AuthApi {
+    static setUrl(url: string) {
+        BACKEND_URL = url.startsWith('http') ? url : `http://${url}`;
+    }
+
     static async sendMagicLink(email: string, apiKey: string): Promise<void> {
         const res = await fetch(`${BACKEND_URL}/auth/magic-link`, {
             method: 'POST',

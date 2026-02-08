@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AuthifyService } from '../src/lib/authify.service';
+import { AuthifyService } from './authify.service';
 import { AuthConfig } from '@authify/core';
 
 describe('AuthifyService (Angular)', () => {
     let service: AuthifyService;
-    const mockConfig: AuthConfig = { clientId: 'test', domain: 'test' };
+    const mockConfig: AuthConfig = { clientId: 'test', domain: 'test', apiKey: 'test-key' };
 
     beforeEach(() => {
         service = new AuthifyService(mockConfig);

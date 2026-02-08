@@ -6,17 +6,19 @@
         "build": "ng-packagr -p ng-package.json"
     },
     "peerDependencies": {
-        "@angular/common": ">=14.0.0",
-        "@angular/core": ">=14.0.0",
-        "@angular/forms": ">=14.0.0"
-    },
-    "dependencies": {
-        "@authify/core": "../core",
-        "@angular/forms": ">=14.0.0",
+        "@angular/common": "^17.0.0",
+        "@angular/core": "^17.0.0",
+        "@angular/forms": "^17.0.0",
+        "@authify/core": "*",
         "rxjs": "^7.0.0"
     },
     "devDependencies": {
+        "@angular/common": "^17.3.12",
+        "@angular/compiler": "^17.3.12",
+        "@angular/compiler-cli": "^17.3.12",
+        "@angular/core": "^17.3.12",
+        "@angular/forms": "^17.3.12",
         "ng-packagr": "^17.0.0",
-        "typescript": "^5.2.0"
+        "typescript": "~5.4.0"
     }
 }

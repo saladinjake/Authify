@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { AuthifyService } from './authify.service';
-import { firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
+import { AuthState } from '@authify/core';
 
 @Component({
   selector: 'authify-signin',
@@ -78,7 +79,7 @@ import { firstValueFrom } from 'rxjs';
 export class SignInComponent {
   email: string = '';
   loading: boolean = false;
-  state$: any;
+  state$: Observable<AuthState>;
 
   constructor(private authify: AuthifyService) {
     this.state$ = this.authify.state$;

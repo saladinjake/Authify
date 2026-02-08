@@ -1,9 +1,11 @@
 import { Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { AuthifyService } from './authify.service';
+import { Observable } from 'rxjs';
+import { AuthState } from '@authify/core';
 
 @Component({
-    selector: 'authify-user-button',
-    template: `
+  selector: 'authify-user-button',
+  template: `
     <div *ngIf="state$ | async as state" style="position: relative; display: inline-block;" #menuContainer>
       <div *ngIf="state.status === 'authenticated' && state.user">
         <button (click)="toggleMenu($event)" class="authify-user-button-trigger">
@@ -34,27 +36,29 @@ import { AuthifyService } from './authify.service';
   `
 })
 export class UserButtonComponent {
-    state$ = this.authify.state$;
-    isOpen = false;
+  state$: Observable<AuthState>;
+  isOpen = false;
 
-    @ViewChild('menuContainer') menuContainer!: ElementRef;
+  @ViewChild('menuContainer') menuContainer!: ElementRef;
 
-    constructor(private authify: AuthifyService) { }
+  constructor(private authify: AuthifyService) {
+    this.state$ = this.authify.state$;
+  }
 
-    toggleMenu(event: Event) {
-        event.stopPropagation();
-        this.isOpen = !this.isOpen;
+  toggleMenu(event: Event) {
+    event.stopPropagation();
+    this.isOpen = !this.isOpen;
+  }
+
+  signOut() {
+    this.authify.signOut();
+    this.isOpen = false;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (this.isOpen && !this.menuContainer.nativeElement.contains(event.target)) {
+      this.isOpen = false;
     }
-
-    signOut() {
-        this.authify.signOut();
-        this.isOpen = false;
-    }
-
-    @HostListener('document:click', ['$event'])
-    onDocumentClick(event: MouseEvent) {
-        if (this.isOpen && !this.menuContainer.nativeElement.contains(event.target)) {
-            this.isOpen = false;
-        }
-    }
+  }
 }

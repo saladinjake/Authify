@@ -37,7 +37,19 @@ export class AuthifyService {
         return this.client.signOut();
     }
 
+    async signIn(credentials: { email: string; password?: string }): Promise<void> {
+        return this.client.signIn(credentials);
+    }
+
+    async signUp(data: { email: string; password?: string; name: string }): Promise<void> {
+        return this.client.signUp(data);
+    }
+
     async signInWithProvider(provider: 'google' | 'github'): Promise<void> {
         return this.client.signInWithProvider(provider);
+    }
+
+    async verifyMFA(code: string): Promise<void> {
+        return this.client.verifyMFA(code);
     }
 }
