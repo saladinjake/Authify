@@ -215,7 +215,7 @@ app.post('/auth/mfa/verify', tenantGuard, (req: any, res) => {
         // Simulation: any 6 digit code works
         if (code.length !== 6) return res.status(400).json({ error: 'INVALID_MFA_CODE' });
 
-        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user: any) => {
             db.run('UPDATE tenants SET usage_count = usage_count + 1 WHERE id = ?', [tenant.id]);
             const token = signJWT({ uid: decoded.uid, tid: tenant.id }, jwks[0].kid);
             res.json({ token, user });
@@ -268,7 +268,7 @@ app.get('/auth/session', tenantGuard, (req: any, res) => {
 
         const decoded: any = jwt.verify(token, signingKey);
 
-        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user: any) => {
             if (err || !user) return res.status(401).json({ error: 'INVALID_SESSION' });
             res.json({ user });
         });
