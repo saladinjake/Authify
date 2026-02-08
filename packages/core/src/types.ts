@@ -26,3 +26,15 @@ export interface AuthState {
     mfaChallenge?: MFAChallenge | null;
 }
 
+export interface AuthTheme {
+    primaryColor?: string;
+    borderRadius?: string;
+    fontFamily?: string;
+}
+
+export interface AuthConfig {
+    clientId: string;
+    apiKey: string;
+    domain: string;
+    theme?: AuthTheme;
+}
