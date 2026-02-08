@@ -15,7 +15,9 @@ export const initDb = () => {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         api_key TEXT UNIQUE NOT NULL,
-        
+        plan TEXT DEFAULT 'free',
+        usage_count INTEGER DEFAULT 0,
+        mfa_enabled BOOLEAN DEFAULT 0,
         redirect_urls TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`, (err) => {
@@ -27,7 +29,10 @@ export const initDb = () => {
         id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
         email TEXT NOT NULL,
-       
+        password TEXT,
+        name TEXT,
+        avatar_url TEXT,
+        mfa_secret TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants(id),
         UNIQUE(tenant_id, email)
@@ -38,7 +43,8 @@ export const initDb = () => {
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         device TEXT,
-    
+        expires_at DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )`);
 
@@ -47,7 +53,8 @@ export const initDb = () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         event TEXT NOT NULL,
         actor TEXT,
-        
+        tenant_id TEXT,
+        details TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
 
