@@ -37,7 +37,7 @@ const tenantGuard = (req: any, res: any, next: any) => {
     const apiKey = req.headers['x-api-key'] || req.headers['X-API-KEY'] || req.query.api_key;
     if (!apiKey) return res.status(401).json({ error: 'MISSING_API_KEY' });
 
-    db.get('SELECT * FROM tenants WHERE api_key = ?', [apiKey], (err, tenant: any) => {
+    db.get('SELECT * FROM tenants WHERE api_key = ?', [apiKey], (err: any, tenant: any) => {
         if (err || !tenant) return res.status(401).json({ error: 'INVALID_API_KEY' });
 
         // Rate Limiting Logic (FREE tier: 200 logins/signups)
@@ -77,7 +77,7 @@ passport.use(new GoogleStrategy({
         const email = profile.emails?.[0].value;
         const tenantId = req.query.state; // We use state to pass tenant_id through OAuth
 
-        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err, user: any) => {
+        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err: any, user: any) => {
             if (user) return done(null, user);
 
             const newUser = {
@@ -106,7 +106,7 @@ app.post('/auth/signup', tenantGuard, async (req: any, res) => {
 
     db.run('INSERT INTO users (id, tenant_id, email, password, name) VALUES (?, ?, ?, ?, ?)',
         [uid, tenant.id, email, hashedPassword, name],
-        (err) => {
+        (err: any) => {
             if (err) return res.status(400).json({ error: 'USER_ALREADY_EXISTS' });
 
             // Increment usage
@@ -123,7 +123,7 @@ app.post('/auth/login', tenantGuard, (req: any, res) => {
     const { email, password } = req.body;
     const tenant = req.tenant;
 
-    db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenant.id], async (err, user: any) => {
+    db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenant.id], async (err: any, user: any) => {
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
         }
@@ -183,7 +183,7 @@ app.get('/auth/verify', (req: any, res) => {
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
 
-        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [decoded.email, decoded.tid], (err, user: any) => {
+        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [decoded.email, decoded.tid], (err: any, user: any) => {
             if (!user) {
                 // Auto-signup if user doesn't exist? (Optional behavior)
                 const uid = 'u_' + crypto.randomBytes(4).toString('hex');
@@ -215,7 +215,7 @@ app.post('/auth/mfa/verify', tenantGuard, (req: any, res) => {
         // Simulation: any 6 digit code works
         if (code.length !== 6) return res.status(400).json({ error: 'INVALID_MFA_CODE' });
 
-        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err: any, user: any) => {
             db.run('UPDATE tenants SET usage_count = usage_count + 1 WHERE id = ?', [tenant.id]);
             const token = signJWT({ uid: decoded.uid, tid: tenant.id }, jwks[0].kid);
             res.json({ token, user });
@@ -268,12 +268,12 @@ app.get('/auth/session', tenantGuard, (req: any, res) => {
 
         const decoded: any = jwt.verify(token, signingKey);
 
-        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err: any, user: any) => {
             if (err || !user) return res.status(401).json({ error: 'INVALID_SESSION' });
             res.json({ user });
         });
     } catch (e: any) {
-        console.error('[AuthSession] Verification failed:', e.message);
+        console.error('AuthSession Verification failed:', e.message);
         res.status(401).json({ error: 'INVALID_TOKEN' });
     }
 });
