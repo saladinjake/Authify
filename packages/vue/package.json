@@ -1,0 +1,34 @@
+{
+    "name": "@authify/vue",
+    "version": "0.0.1",
+    "description": "Vue 3 plugin and components for Authify",
+    "main": "dist/authify-vue.umd.js",
+    "module": "dist/authify-vue.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/authify-vue.mjs",
+            "require": "./dist/authify-vue.umd.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./style.css": "./dist/style.css"
+    },
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite build --watch"
+    },
+    "peerDependencies": {
+        "vue": "^3.0.0"
+    },
+    "dependencies": {
+        "@authify/core": "../core"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.2.4",
+        "tsup": "^8.0.1",
+        "typescript": "^5.3.3",
+        "vite": "^5.4.21",
+        "vite-plugin-dts": "^4.5.4",
+        "vue": "^3.4.0"
+    }
+}

@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authify Documentation - Enterprise Authentication Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --bg-main: #ffffff;
+            --bg-sidebar: #f8f9fa;
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --border: #e2e8f0;
+            --code-bg: #1e1e1e;
+            --success: #48bb78;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header-nav {
+            margin-left: auto;
+            display: flex;
+            gap: 24px;
+        }
+
+        .header-nav a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .header-nav a:hover {
+            opacity: 1;
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            margin-top: 64px;
+            min-height: calc(100vh - 64px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            position: fixed;
+            left: 0;
+            top: 64px;
+            bottom: 0;
+            transition: transform 0.3s;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-280px);
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            left: 290px;
+            top: 80px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 100;
+            transition: left 0.3s;
+        }
+
+        .sidebar.collapsed+.sidebar-toggle {
+            left: 10px;
+        }
+
+        .sidebar-section {
+            padding: 16px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .sidebar-item {
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-primary);
+        }
+
+        .sidebar-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .sidebar-item.active {
+            background: var(--primary);
+            color: white;
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 40px;
+            transition: margin-left 0.3s;
+        }
+
+        .sidebar.collapsed~.main-content {
+            margin-left: 0;
+        }
+
+        .doc-page {
+            display: none;
+            max-width: 1200px;
+        }
+
+        .doc-page.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .doc-header {
+            margin-bottom: 32px;
+        }
+
+        .doc-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .doc-header p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+        }
+
+        .doc-section {
+            margin-bottom: 48px;
+        }
+
+        .doc-section h3 {
+            font-size: 1.75rem;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .doc-section h4 {
+            font-size: 1.25rem;
+            margin: 24px 0 12px;
+            color: var(--text-primary);
+        }
+
+        .doc-section p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* Code Blocks */
+        .code-example {
+            margin: 24px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .code-header {
+            background: var(--code-bg);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+
+        .code-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .code-tab {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .code-tab.active {
+            background: var(--primary);
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        pre[class*="language-"] {
+            margin: 0 !important;
+            border-radius: 0 !important;
+        }
+
+        /* Sandbox */
+        .sandbox {
+            background: var(--bg-sidebar);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .sandbox h4 {
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .sandbox-output {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            min-height: 200px;
+        }
+
+        /* Navigation */
+        .doc-navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Feature Badge */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--success);
+            color: white;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .badge.pro {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+
+        .warning-box {
+            background: #fffaf0;
+            border-left: 4px solid #ed8936;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-280px);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .sidebar-toggle {
+                left: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🔐 Authify Documentation</h1>
+        <div class="header-nav">
+            <a href="https://github.com/authify/authify" target="_blank">GitHub</a>
+            <a href="../admin-dashboard/index.html">Dashboard</a>
+            <a href="../react-demo">Demo</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <h3>Getting Started</h3>
+                <div class="sidebar-item active" data-page="introduction">Introduction</div>
+                <div class="sidebar-item" data-page="quick-start">Quick Start</div>
+                <div class="sidebar-item" data-page="installation">Installation</div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Core Concepts</h3>
+                <div class="sidebar-item" data-page="authentication">Authentication</div>
+                <div class="sidebar-item" data-page="multi-tenancy">Multi-Tenancy</div>
+                <div class="sidebar-item" data-page="rate-limiting">Rate Limiting</div>
+                <div class="sidebar-item" data-page="mfa">Multi-Factor Auth</div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Framework Integration</h3>
+                <div class="sidebar-item" data-page="react">React SDK</div>
+                <div class="sidebar-item" data-page="vue">Vue SDK</div>
+                <div class="sidebar-item" data-page="angular">Angular SDK</div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>API Reference</h3>
+                <div class="sidebar-item" data-page="api-auth">Authentication API</div>
+                <div class="sidebar-item" data-page="api-admin">Admin API</div>
+                <div class="sidebar-item" data-page="jwks">JWKS & Security</div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Enterprise</h3>
+                <div class="sidebar-item" data-page="subscriptions">Subscriptions</div>
+                <div class="sidebar-item" data-page="key-rotation">Key Rotation</div>
+                <div class="sidebar-item" data-page="audit-logs">Audit Logs</div>
+            </div>
+        </nav>
+
+        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Introduction Page -->
+            <div class="doc-page active" id="introduction">
+                <div class="doc-header">
+                    <h2>Welcome to Authify</h2>
+                    <p>Enterprise-grade authentication infrastructure for modern applications</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>What is Authify?</h3>
+                    <p>
+                        Authify is a complete authentication platform that provides developers with everything they need
+                        to add secure,
+                        scalable authentication to their applications. Built with multi-tenancy at its core, Authify
+                        supports multiple
+                        authentication methods, MFA, and enterprise features out of the box.
+                    </p>
+
+                    <h4>Key Features</h4>
+                    <ul style="margin-left: 24px; color: var(--text-secondary);">
+                        <li>✅ Email/Password Authentication with bcrypt hashing</li>
+                        <li>✅ Magic Link (Passwordless) authentication</li>
+                        <li>✅ Social Login (Google, GitHub) via OAuth</li>
+                        <li>✅ Multi-Factor Authentication (MFA) with TOTP</li>
+                        <li>✅ Multi-Tenancy with isolated data</li>
+                        <li>✅ Rate Limiting & Subscription Management</li>
+                        <li>✅ JWKS & Automatic Key Rotation</li>
+                        <li>✅ React, Vue, and Angular SDKs</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Architecture Overview</h3>
+                    <p>
+                        Authify consists of three main components:
+                    </p>
+
+                    <div class="info-box">
+                        <strong>Backend Server:</strong> Express.js server with SQLite database, handling
+                        authentication,
+                        multi-tenancy, rate limiting, and subscription management.
+                    </div>
+
+                    <div class="info-box">
+                        <strong>Core SDK:</strong> Framework-agnostic authentication client with state management,
+                        API communication, and session handling.
+                    </div>
+
+                    <div class="info-box">
+                        <strong>Framework SDKs:</strong> React, Vue, and Angular integrations providing components,
+                        hooks/composables, and services.
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" disabled>← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('quick-start')">Next: Quick Start →</button>
+                </div>
+            </div>
+
+            <!-- Quick Start Page -->
+            <div class="doc-page" id="quick-start">
+                <div class="doc-header">
+                    <h2>Quick Start</h2>
+                    <p>Get up and running with Authify in minutes</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>1. Start the Backend</h3>
+                    <p>First, clone the repository and start the authentication server:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Terminal</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-bash">cd Authify
+npm install
+npm run dev --workspace=@authify/backend</code></pre>
+                    </div>
+
+                    <p>The backend will start on <code>http://localhost:5000</code></p>
+
+                    <div class="info-box">
+                        <strong>Default Credentials:</strong><br>
+                        Tenant ID: <code>dev_tenant_1</code><br>
+                        API Key: <code>dev_api_key_123</code>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>2. Run a Demo Application</h3>
+                    <p>Choose your preferred framework and run the demo:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <div class="code-tabs">
+                                <span class="code-tab active" onclick="switchTab(this, 'react')">React</span>
+                                <span class="code-tab" onclick="switchTab(this, 'vue')">Vue</span>
+                                <span class="code-tab" onclick="switchTab(this, 'angular')">Angular</span>
+                            </div>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre class="tab-content react active"><code class="language-bash">npm run dev --workspace=react-demo
+# Open http://localhost:5173</code></pre>
+                        <pre class="tab-content vue"><code class="language-bash">npm run dev --workspace=vue-demo
+# Open http://localhost:5174</code></pre>
+                        <pre class="tab-content angular"><code class="language-bash">npm run dev --workspace=angular-demo
+# Open http://localhost:4200</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>3. Test Authentication</h3>
+                    <p>Try signing up with an email and password, or use social login with Google!</p>
+
+                    <div class="warning-box">
+                        <strong>Note:</strong> For social login to work, you need to configure your Google OAuth
+                        credentials
+                        in the backend <code>.env</code> file.
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('introduction')">← Previous: Introduction</button>
+                    <button class="nav-btn" onclick="navigateTo('installation')">Next: Installation →</button>
+                </div>
+            </div>
+
+            <!-- React SDK Page -->
+            <div class="doc-page" id="react">
+                <div class="doc-header">
+                    <h2>React SDK</h2>
+                    <p>Complete authentication for React applications with hooks and components</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Installation</h3>
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Terminal</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-bash">npm install @authify/react @authify/core</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Setup Provider</h3>
+                    <p>Wrap your app with the <code>AuthifyProvider</code> and configure your tenant credentials:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>main.tsx</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-tsx">import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import { AuthifyProvider } from '@authify/react';
+import '@authify/core/styles.css';
+
+const authConfig = {
+  clientId: 'dev_tenant_1',
+  apiKey: 'dev_api_key_123',
+  domain: 'localhost:5000'
+};
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AuthifyProvider config={authConfig}>
+      <App />
+    </AuthifyProvider>
+  </React.StrictMode>
+);</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Using the useAuth Hook</h3>
+                    <p>Access authentication state and methods with the <code>useAuth</code> hook:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>App.tsx</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-tsx">import { SignIn, UserButton, useAuth } from '@authify/react';
+
+function App() {
+  const { isSignedIn, user, isLoaded } = useAuth();
+
+  if (!isLoaded) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {isSignedIn ? (
+        <>
+          <h1>Welcome, {user?.name}!</h1>
+          <UserButton />
+        </>
+      ) : (
+        <SignIn />
+      )}
+    </div>
+  );
+}</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Available Hooks</h3>
+                    <h4>useAuth()</h4>
+                    <p>Main authentication hook providing state and methods:</p>
+                    <ul style="margin-left: 24px; color: var(--text-secondary);">
+                        <li><code>isSignedIn</code> - Boolean indicating if user is authenticated</li>
+                        <li><code>user</code> - Current user object</li>
+                        <li><code>isLoaded</code> - Boolean indicating if auth state is loaded</li>
+                        <li><code>signIn(email)</code> - Send magic link</li>
+                        <li><code>signOut()</code> - Sign out current user</li>
+                        <li><code>signInWithProvider(provider)</code> - Social login</li>
+                        <li><code>verifyMFA(code)</code> - Verify MFA code <span class="badge">NEW</span></li>
+                    </ul>
+                </div>
+
+                <div class="sandbox">
+                    <h4>Live Example</h4>
+                    <div class="sandbox-output">
+                        <p style="color: var(--text-secondary); text-align: center; padding: 40px;">
+                            Interactive sandbox would render here in production
+                        </p>
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('multi-tenancy')">← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('vue')">Next: Vue SDK →</button>
+                </div>
+            </div>
+
+            <!-- Vue SDK Page -->
+            <div class="doc-page" id="vue">
+                <div class="doc-header">
+                    <h2>Vue SDK</h2>
+                    <p>Complete authentication for Vue 3 applications with composables and components</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Installation</h3>
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Terminal</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-bash">npm install @authify/vue @authify/core</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Setup Plugin</h3>
+                    <p>Install the Authify plugin in your Vue app:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>main.ts</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-typescript">import { createApp } from 'vue';
+import App from './App.vue';
+import { AuthifyPlugin } from '@authify/vue';
+import '@authify/core/styles.css';
+
+const app = createApp(App);
+
+app.use(AuthifyPlugin, {
+  config: {
+    clientId: 'dev_tenant_1',
+    apiKey: 'dev_api_key_123',
+    domain: 'localhost:5000'
+  }
+});
+
+app.mount('#app');</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Using the useAuth Composable</h3>
+                    <p>Access authentication state with the <code>useAuth</code> composable:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>App.vue</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-vue">&lt;script setup&gt;
+import { SignIn, UserButton, useAuth } from '@authify/vue';
+
+const { isSignedIn, user, isLoaded } = useAuth();
+&lt;/script&gt;
+
+&lt;template&gt;
+  &lt;div v-if="!isLoaded"&gt;Loading...&lt;/div&gt;
+  &lt;div v-else&gt;
+    &lt;div v-if="isSignedIn"&gt;
+      &lt;h1&gt;Welcome, {{ user?.name }}!&lt;/h1&gt;
+      &lt;UserButton /&gt;
+    &lt;/div&gt;
+    &lt;SignIn v-else /&gt;
+  &lt;/div&gt;
+&lt;/template&gt;</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('react')">← Previous: React SDK</button>
+                    <button class="nav-btn" onclick="navigateTo('angular')">Next: Angular SDK →</button>
+                </div>
+            </div>
+
+            <!-- Angular SDK Page -->
+            <div class="doc-page" id="angular">
+                <div class="doc-header">
+                    <h2>Angular SDK</h2>
+                    <p>Complete authentication for Angular applications with services and components</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Installation</h3>
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Terminal</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-bash">npm install @authify/angular @authify/core</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Setup Module</h3>
+                    <p>Import and configure the AuthifyModule:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>app.module.ts</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-typescript">import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { AuthifyModule } from '@authify/angular';
+import '@authify/core/styles.css';
+
+@NgModule({
+  imports: [
+    BrowserModule,
+    AuthifyModule.forRoot({
+      clientId: 'dev_tenant_1',
+      apiKey: 'dev_api_key_123',
+      domain: 'localhost:5000'
+    })
+  ],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Using the AuthService</h3>
+                    <p>Inject the AuthService to access authentication state:</p>
+
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>app.component.ts</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-typescript">import { Component } from '@angular/core';
+import { AuthService } from '@authify/angular';
+
+@Component({
+  selector: 'app-root',
+  template: `
+    <div *ngIf="!(authService.isLoaded$ | async)">Loading...</div>
+    <div *ngIf="authService.isLoaded$ | async">
+      <div *ngIf="authService.isSignedIn$ | async">
+        <h1>Welcome, {{ (authService.user$ | async)?.name }}!</h1>
+        <authify-user-button></authify-user-button>
+      </div>
+      <authify-signin *ngIf="!(authService.isSignedIn$ | async)"></authify-signin>
+    </div>
+  `
+})
+export class AppComponent {
+  constructor(public authService: AuthService) {}
+}</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('vue')">← Previous: Vue SDK</button>
+                    <button class="nav-btn" onclick="navigateTo('api-auth')">Next: API Reference →</button>
+                </div>
+            </div>
+
+            <!-- Add more pages here... -->
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+
+    <script>
+        // Navigation
+        function navigateTo(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.doc-page').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // Show target page
+            document.getElementById(pageId).classList.add('active');
+
+            // Update sidebar
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.page === pageId) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // Sidebar navigation
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            item.addEventListener('click', () => {
+                navigateTo(item.dataset.page);
+            });
+        });
+
+        // Toggle sidebar
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        }
+
+        // Copy code
+        function copyCode(btn) {
+            const codeBlock = btn.closest('.code-example').querySelector('pre.active code, pre code');
+            navigator.clipboard.writeText(codeBlock.textContent);
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        }
+
+        // Switch tabs
+        function switchTab(tab, framework) {
+            const container = tab.closest('.code-example');
+
+            // Update tab active state
+            container.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Update content
+            container.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+                if (content.classList.contains(framework)) {
+                    content.classList.add('active');
+                }
+            });
+
+            // Re-highlight
+            Prism.highlightAllUnder(container);
+        }
+
+        // Highlight code on load
+        Prism.highlightAll();
+    </script>
+</body>
+
+</html>

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { AuthifyService } from '@authify/angular';
+import { AuthifyService, GoogleAuthService } from '@authify/angular';
 import { Observable } from 'rxjs';
 import { AuthState } from '@authify/core';
 
@@ -51,7 +51,18 @@ import { AuthState } from '@authify/core';
 
             <authify-signin *ngIf="view === 'signin'"></authify-signin>
             <authify-signup *ngIf="view === 'signup'"></authify-signup>
+            
+            <button 
+               (click)="googleLogin()" 
+               style="margin-top: 20px; padding: 10px 20px; background-color: #4285F4; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;"
+            >
+               Login with Google (Service)
+            </button>
           </div>
+        </div>
+
+        <div *ngIf="googleToken$ | async as token" style="margin-top: 20px; padding: 10px; background: #e0f7fa; border-radius: 4px; text-align: left; font-size: 12px; overflow-wrap: break-word;">
+           <strong>Google Token:</strong> {{ token }}
         </div>
       </div>
     </div>
@@ -60,10 +71,19 @@ import { AuthState } from '@authify/core';
 })
 export class AppComponent {
   state$: Observable<AuthState>;
+  googleToken$: Observable<string | null>;
   view: 'signin' | 'signup' = 'signin';
 
-  constructor(private authify: AuthifyService) {
+  constructor(
+      private authify: AuthifyService, 
+      private googleAuth: GoogleAuthService
+  ) {
     this.state$ = this.authify.state$;
+    this.googleToken$ = this.googleAuth.token$;
+  }
+
+  googleLogin() {
+    this.googleAuth.login();
   }
 
   signOut() {

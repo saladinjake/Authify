@@ -24,7 +24,7 @@ declare const useAuth: () => {
     error: string | null;
     signIn: (email: string) => Promise<void>;
     signOut: () => Promise<void>;
-    signInWithProvider: (provider: "google" | "github") => Promise<void>;
+    signInWithProvider: (provider: 'google' | 'github') => Promise<void>;
     verifyMFA: (code: string) => Promise<void>;
 };
 declare const useUser: () => {

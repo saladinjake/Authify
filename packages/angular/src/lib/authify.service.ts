@@ -41,6 +41,10 @@ export class AuthifyService {
         return this.client.signIn(credentials);
     }
 
+    async verifyMagicLink(token: string): Promise<void> {
+        return this.client.verifyMagicLink(token);
+    }
+
     async signUp(data: { email: string; password?: string; name: string }): Promise<void> {
         return this.client.signUp(data);
     }

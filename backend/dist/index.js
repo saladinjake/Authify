@@ -52,13 +52,16 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(passport.initialize());
 // Passport setup (Google)
 // Note: In a real multi-tenant app, you'd use the tenant's own Google credentials
 // but for MVP we use our shared ones.
+console.log('[Authify] Google Client ID:', process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 10) + '...' : 'Not Set');
+console.log('[Authify] Callback URL:', `http://localhost:${PORT}/auth/google/callback`);
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID || 'DU_CLIENT_ID',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'DUMMY_SECRET',
-    callbackURL: "/auth/google/callback",
+    callbackURL: `http://localhost:${PORT}/auth/google/callback`,
     passReqToCallback: true
 }, async (req, accessToken, refreshToken, profile, done) => {
     const email = profile.emails?.[0].value;
@@ -199,7 +202,32 @@ app.post('/admin/rotate-keys', tenantGuard, (req, res) => {
 app.get('/.well-known/jwks.json', (req, res) => {
     res.json({ keys: jwks });
 });
-// 4. Tenant Info (for Dashboard)
+// 4. Session Verification
+app.get('/auth/session', tenantGuard, (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader)
+        return res.status(401).json({ error: 'NO_TOKEN_PROVIDED' });
+    const token = authHeader.split(' ')[1];
+    try {
+        // Decode header to find Key ID (kid)
+        const decodedToken = jwt.decode(token, { complete: true });
+        const kid = decodedToken?.header?.kid;
+        // Find matching key in JWKS or fallback to activeKey
+        // Assuming JWT_SECRET is the fallback or primary secret if kid is not found or jwks is empty
+        const signingKey = jwks.find(k => k.kid === kid)?.k || JWT_SECRET;
+        const decoded = jwt.verify(token, signingKey);
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err, user) => {
+            if (err || !user)
+                return res.status(401).json({ error: 'INVALID_SESSION' });
+            res.json({ user });
+        });
+    }
+    catch (e) {
+        console.error('AuthSession Verification failed:', e.message);
+        res.status(401).json({ error: 'INVALID_TOKEN' });
+    }
+});
+// 5. Tenant Info (for Dashboard)
 app.get('/admin/me', tenantGuard, (req, res) => {
     res.json(req.tenant);
 });
