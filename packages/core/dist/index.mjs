@@ -60,6 +60,31 @@ var AuthApi = class {
     return res.json();
   }
   static async socialLogin(provider, clientId, extra) {
+    try {
+      const headers = {
+        "X-API-KEY": (extra == null ? void 0 : extra.apiKey) || "",
+        "X-STATE": clientId
+      };
+      if (extra == null ? void 0 : extra.googleClientId) headers["X-GOOGLE-CLIENT-ID"] = extra.googleClientId;
+      if (extra == null ? void 0 : extra.googleClientSecret) headers["X-GOOGLE-CLIENT-SECRET"] = extra.googleClientSecret;
+      if (extra == null ? void 0 : extra.googleCallbackUrl) headers["X-GOOGLE-CALLBACK-URL"] = extra.googleCallbackUrl;
+      if (extra == null ? void 0 : extra.githubClientId) headers["X-GITHUB-CLIENT-ID"] = extra.githubClientId;
+      if (extra == null ? void 0 : extra.githubClientSecret) headers["X-GITHUB-CLIENT-SECRET"] = extra.githubClientSecret;
+      if (extra == null ? void 0 : extra.githubCallbackUrl) headers["X-GITHUB-CALLBACK-URL"] = extra.githubCallbackUrl;
+      const res = await fetch(`${BACKEND_URL}/auth/${provider}`, {
+        method: "POST",
+        headers
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.redirectUrl) {
+          window.location.href = data.redirectUrl;
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("[Authify] Header-based auth initiation failed, falling back to query params", err);
+    }
     let url = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
     if (extra == null ? void 0 : extra.apiKey) {
       url += `&api_key=${extra.apiKey}`;
@@ -68,6 +93,11 @@ var AuthApi = class {
       if (extra.googleClientId) url += `&google_client_id=${extra.googleClientId}`;
       if (extra.googleClientSecret) url += `&google_client_secret=${extra.googleClientSecret}`;
       if (extra.googleCallbackUrl) url += `&google_callback_url=${extra.googleCallbackUrl}`;
+    }
+    if (provider === "github" && extra) {
+      if (extra.githubClientId) url += `&github_client_id=${extra.githubClientId}`;
+      if (extra.githubClientSecret) url += `&github_client_secret=${extra.githubClientSecret}`;
+      if (extra.githubCallbackUrl) url += `&github_callback_url=${extra.githubCallbackUrl}`;
     }
     window.location.href = url;
   }
@@ -273,6 +303,9 @@ var AuthClient = class {
   get state() {
     return this.store.getState();
   }
+  getConfig() {
+    return this.config;
+  }
   async signInWithEmail(email) {
     try {
       this.store.setError(null);
@@ -308,6 +341,9 @@ var AuthClient = class {
         googleClientId: this.config.googleClientId,
         googleClientSecret: this.config.googleClientSecret,
         googleCallbackUrl: this.config.googleCallbackUrl,
+        githubClientId: this.config.githubClientId,
+        githubClientSecret: this.config.githubClientSecret,
+        githubCallbackUrl: this.config.githubCallbackUrl,
         apiKey: this.config.apiKey
       });
     } catch (err) {

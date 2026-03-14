@@ -19,12 +19,23 @@ import { AuthState } from '@authify/core';
           <div *ngIf="state.status === 'loading'">Loading Authify...</div>
           
           <div *ngIf="state.status === 'authenticated'">
-            <h3>Welcome, {{ state.user?.name }}!</h3>
-            <p>{{ state.user?.email }}</p>
-            <button (click)="signOut()" style="background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
-              Sign Out
-            </button>
-            <div style="margin-top: 20px; text-align: left; background: #eee; padding: 10px; font-size: 12px; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; text-align: left;">
+               <div>
+                  <h3 style="margin: 0;">Welcome back, {{ state.user?.name || 'User' }}!</h3>
+                  <p style="margin: 0, font-size: 14px, color: #666">{{ state.user?.email }}</p>
+               </div>
+            </div>
+
+            <div *ngIf="state.user?.role === 'admin'" style="margin-bottom: 20px;">
+               <button (click)="showDashboard = !showDashboard" 
+                 style="width: 100%; padding: 10px; background: #6366f1; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                 {{ showDashboard ? 'Hide Console' : 'Open Admin Console' }}
+               </button>
+            </div>
+
+            <app-dashboard *ngIf="showDashboard"></app-dashboard>
+
+            <div *ngIf="!showDashboard" style="margin-top: 20px; text-align: left; background: #eee; padding: 10px; font-size: 12px; border-radius: 4px;">
               <pre>{{ state.user | json }}</pre>
             </div>
           </div>
@@ -73,6 +84,7 @@ export class AppComponent {
   state$: Observable<AuthState>;
   googleToken$: Observable<string | null>;
   view: 'signin' | 'signup' = 'signin';
+  showDashboard = false;
 
   constructor(
       private authify: AuthifyService, 

@@ -7,27 +7,45 @@ Authify is an authentication platform that provides developers with a complete a
 ## Features
 
 ### Core Authentication
-- ✅ **Email/Password Authentication** with bcrypt hashing
-- ✅ **Magic Link (Passwordless)** authentication
-- ✅ **Social Login** (Google, GitHub) via OAuth
-- ✅ **Multi-Factor Authentication (MFA)** with TOTP support
-- ✅ **Session Management** with JWT tokens
-- ✅ **JWKS & Key Rotation** for enhanced security
+- ✅ **Email/Password Authentication**- Secure bcrypt hashing
+- ✅ **Magic Link (Passwordless)** - Passwordless entry with expiration
+- ✅ **Social Login** - Support for Google and GitHub
+- ✅ **Multi-Factor Authentication (MFA)** - TOTP simulation and verification
+- ✅ **Generic Provider Routing** - Scalable architecture for adding new OAuth providers
+- ✅ **JWKS & Key Rotation** - Secure JWT signing with public key exposure
 
 ### 🏢 Enterprise Features
-- ✅ **Multi-Tenancy** - Each developer gets their own isolated tenant
-- ✅ **Dynamic Google OAuth** - Consumers can supply their own Google credentials
-- ✅ **Rate Limiting** - Free tier: 200 auth events/month
-- ✅ **Subscription Management** - Upgrade to PRO via Paystack
-- ✅ **Admin Dashboard** - Manage API keys, settings, and usage
-- ✅ **Audit Logs** - Track all authentication events
-- ✅ **API Key Authentication** - Secure tenant isolation
+- ✅ **Multi-Tenancy** - Fully isolated users and data based on API keys
+- ✅ **Dynamic OAuth Credentials** - Supply your own Google/GitHub IDs via request headers for white-labeled auth
+- ✅ **AJAX Initiation** - Secure login initiation via POST requests to avoid sensitive data in URLs
+- ✅ **Rate Limiting** - Usage-based enforcement (Free tier: 200 events/month)
+- ✅ **Subscription Management** - Integrated Paystack workflow for PRO upgrades
+- ✅ **Identity Separation** - Users are scoped to tenants (User A on Tenant 1 is different from User A on Tenant 2)
 
 ### 🎨 Framework Support
--  **React** SDK with hooks
--  **Vue 3** SDK with composables
--  **Angular** SDK with services
--  **Vanilla JS** core library
+-  **React** SDK - Full visibility with `AuthifyProvider` and hooks
+-  **Vue 3** SDK - Seamless integration with `AuthifyPlugin`
+-  **Angular** SDK - Service-based auth with `AuthifyModule`
+-  **Vanilla JS** - Framework-agnostic core logic (@authify/core)
+
+---
+
+## 🚀 How it Works
+
+Authify follows a **Headless-First** architecture designed for maximum flexibility and security.
+
+### 1. Integration
+Integrate one of our SDKs into your frontend. The SDK communicates with the Authify Backend using your **Tenant API Key**.
+
+### 2. Dynamic Authentication Flow
+Unlike traditional auth providers that require static server-side config, Authify allows **Dynamic Orchestration**:
+- **Initiation**: When a user clicks "Sign in with Google", the SDK sends a POST request to `/auth/google`.
+- **Header Injection**: The SDK injects your custom Google Client ID and Callback URL into the request headers.
+- **Backend Picking**: The Authify Backend detects these headers and dynamically builds the OAuth URL for the user.
+- **Callback & Handover**: After provider authentication, Authify handles the complex token exchange, creates/finds the user in your isolated tenant DB, and hands back a JWT to your frontend.
+
+### 3. Isolated Tenancy
+Every request is authenticated via `X-API-KEY`. This ensures that your users, sessions, and logs never leak into other tenants. Even if the same person uses two different apps powered by Authify, they are treated as unique identities within each tenant.
 
 ---
 
@@ -53,13 +71,13 @@ The backend will start on `http://localhost:5000`
 ```bash
 npm run dev --workspace=react-demo
 ```
-Open `http://localhost:5173`
+Open `http://localhost:4200`
 
 #### Vue Demo
 ```bash
 npm run dev --workspace=vue-demo
 ```
-Open `http://localhost:5174`
+Open `http://localhost:4200`
 
 #### Angular Demo
 ```bash
@@ -89,10 +107,13 @@ const config = {
   clientId: 'your_tenant_id',
   apiKey: 'your_api_key',
   domain: 'localhost:5000',
-  // Optional: Supply your own Google OAuth credentials
+  // Optional: Supply your own Google/GitHub OAuth credentials
   googleClientId: '...',
   googleClientSecret: '...',
-  googleCallbackUrl: '...'
+  googleCallbackUrl: '...',
+  githubClientId: '...',
+  githubClientSecret: '...',
+  githubCallbackUrl: '...'
 };
 
 function App() {
@@ -122,7 +143,10 @@ const authConfig = {
   domain: 'localhost:5000',
   googleClientId: '...',
   googleClientSecret: '...',
-  googleCallbackUrl: '...'
+  googleCallbackUrl: '...',
+  githubClientId: '...',
+  githubClientSecret: '...',
+  githubCallbackUrl: '...'
 };
 
 const { isSignedIn, user } = useAuth();
@@ -147,7 +171,10 @@ import { AuthifyModule } from '@authify/angular';
       domain: 'localhost:5000',
       googleClientId: '...',
       googleClientSecret: '...',
-      googleCallbackUrl: '...'
+      googleCallbackUrl: '...',
+      githubClientId: '...',
+      githubClientSecret: '...',
+      githubCallbackUrl: '...'
     })
   ]
 })
@@ -166,8 +193,8 @@ export class AppModule { }
 | `/auth/login` | POST | Login with email/password |
 | `/auth/magic-link` | POST | Send magic link email |
 | `/auth/mfa/verify` | POST | Verify MFA code |
-| `/auth/google` | GET | Initiate Google OAuth |
-| `/auth/google/callback` | GET | Google OAuth callback |
+| `/auth/:provider` | POST/GET | Initiate OAuth (Google, GitHub) |
+| `/auth/:provider/callback` | GET | OAuth callback handler |
 
 ### Admin
 

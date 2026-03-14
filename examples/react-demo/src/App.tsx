@@ -1,9 +1,12 @@
+import React from 'react';
 import { SignIn, UserButton, useUser, useGoogleAuth } from '@authify/react';
-import '@authify/core/styles.css'; // Import the CSS
+import { Dashboard } from './Dashboard';
+import '@authify/core/styles.css';
 
 function App() {
     const { isSignedIn, user, isLoaded } = useUser();
-    const { token, login } = useGoogleAuth();
+    const { login } = useGoogleAuth();
+    const [showDashboard, setShowDashboard] = React.useState(false);
 
     if (!isLoaded) return <div>Loading Authify...</div>;
 
@@ -14,7 +17,7 @@ function App() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
+            padding: '40px 20px',
             backgroundColor: '#f5f5f5',
             color: '#333'
         }}>
@@ -23,51 +26,80 @@ function App() {
                 backgroundColor: '#fff',
                 borderRadius: '16px',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                minWidth: '400px',
-                textAlign: 'center'
+                width: '100%',
+                maxWidth: showDashboard ? '900px' : '400px',
+                textAlign: 'center',
+                transition: 'max-width 0.3s ease'
             }}>
                 <h1 style={{ marginTop: 0, marginBottom: '24px' }}>Authify Demo</h1>
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
                     {isSignedIn ? (
-                        <div>
-                            <h3>Welcome back!</h3>
-                            <UserButton />
+                        <div style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <div style={{ textAlign: 'left' }}>
+                                    <h3 style={{ margin: 0 }}>Welcome back, {user?.name || 'User'}!</h3>
+                                    <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>{user?.email}</p>
+                                </div>
+                                <UserButton />
+                            </div>
+
+                            {user?.role === 'admin' && (
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                    <button
+                                        onClick={() => setShowDashboard(!showDashboard)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '10px',
+                                            backgroundColor: showDashboard ? '#666' : '#667eea',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {showDashboard ? 'Hide Console' : 'Open Admin Console'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {showDashboard ? (
+                                <Dashboard />
+                            ) : (
+                                <div style={{ marginTop: '20px', padding: '15px', background: '#f8f8f8', borderRadius: '8px', textAlign: 'left' }}>
+                                    <h4 style={{ marginTop: 0 }}>User Profile Data</h4>
+                                    <pre style={{ fontSize: '12px', overflow: 'auto' }}>{JSON.stringify(user, null, 2)}</pre>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div style={{ width: '100%' }}>
                             <p style={{ marginBottom: '20px', color: '#666' }}>Please sign in to continue</p>
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                                <SignIn />
+                            <SignIn />
+                            <div style={{ margin: '20px 0', display: 'flex', alignItems: 'center', color: '#ccc' }}>
+                                <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+                                <span style={{ margin: '0 10px', fontSize: '12px' }}>OR</span>
+                                <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
                             </div>
                             <button
                                 onClick={login}
                                 style={{
-                                    padding: '10px 20px',
+                                    padding: '12px 20px',
                                     backgroundColor: '#4285F4',
                                     color: 'white',
                                     border: 'none',
-                                    borderRadius: '5px',
+                                    borderRadius: '8px',
                                     cursor: 'pointer',
-                                    width: '100%'
+                                    width: '100%',
+                                    fontWeight: 'bold',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                 }}
                             >
-                                Login with Google (Hook)
+                                Continue with Google
                             </button>
                         </div>
                     )}
                 </div>
-
-                {isSignedIn && (
-                    <div style={{ marginTop: '20px', padding: '10px', background: '#f0f0f0', borderRadius: '4px', textAlign: 'left', fontSize: '12px', overflowWrap: 'break-word' }}>
-                        <pre>{JSON.stringify(user, null, 2)}</pre>
-                        {token && (
-                            <div style={{ marginTop: '10px' }}>
-                                <strong>Google Token:</strong> {token}
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
         </div>
     );

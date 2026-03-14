@@ -3,6 +3,7 @@ export type User = {
     email: string;
     name?: string;
     avatarUrl?: string;
+    role?: 'admin' | 'user';
 };
 
 export type AuthSession = {

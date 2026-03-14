@@ -10,13 +10,13 @@ export class MockDb {
   run(sql: string, params: any[] = [], callback?: (err: Error | null) => void) {
     // Basic SQL parser for INSERT/UPDATE
     if (sql.includes('INSERT INTO users')) {
-      const [id, tenant_id, email, password, name, avatar_url] = params;
+      const [id, tenant_id, email, password, name, avatar_url, role] = params;
       const existing = this.tables.users.find(u => u.email === email && u.tenant_id === tenant_id);
       if (existing) {
         callback?.(new Error('USER_ALREADY_EXISTS'));
         return;
       }
-      this.tables.users.push({ id, tenant_id, email, password, name, avatar_url });
+      this.tables.users.push({ id, tenant_id, email, password, name, avatar_url, role: role || 'user' });
     } else if (sql.includes('UPDATE tenants')) {
       const [id] = params;
       const tenant = this.tables.tenants.find(t => t.id === id);
@@ -37,6 +37,9 @@ export class MockDb {
     } else if (sql.includes('FROM users WHERE id = ?')) {
       const row = this.tables.users.find(u => u.id === params[0]);
       callback?.(null, row);
+    } else if (sql.includes('SELECT COUNT(*) as count FROM users WHERE tenant_id = ?')) {
+      const count = this.tables.users.filter(u => u.tenant_id === params[0]).length;
+      callback?.(null, { count });
     }
     return this;
   }

@@ -24,6 +24,29 @@ function signJWT(payload: any, kid: string) {
     return jwt.sign(payload, activeKey, { expiresIn: '1h', keyid: kid });
 }
 
+const adminGuard = (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'NO_TOKEN_PROVIDED' });
+
+    const token = authHeader.split(' ')[1];
+    try {
+        const decodedToken: any = jwt.decode(token, { complete: true });
+        const kid = decodedToken?.header?.kid;
+        const signingKey = jwks.find(k => k.kid === kid)?.k || JWT_SECRET;
+        const decoded: any = jwt.verify(token, signingKey);
+
+        db.get('SELECT * FROM users WHERE id = ?', [decoded.uid], (err: any, user: any) => {
+            if (err || !user || user.role !== 'admin') {
+                return res.status(403).json({ error: 'ADMIN_ACCESS_REQUIRED' });
+            }
+            req.user = user;
+            next();
+        });
+    } catch (e: any) {
+        res.status(401).json({ error: 'INVALID_SESSION' });
+    }
+};
+
 function rotateKeys() {
     const newKey = crypto.randomBytes(32).toString('hex');
     const newKid = 'key-' + Date.now();
@@ -81,18 +104,22 @@ passport.use(new GoogleStrategy({
         db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err: any, user: any) => {
             if (user) return done(null, user);
 
-            const newUser = {
-                id: 'u_' + crypto.randomBytes(4).toString('hex'),
-                tenant_id: tenantId,
-                email,
-                name: profile.displayName,
-                avatar_url: profile.photos?.[0].value
-            };
+            db.get('SELECT COUNT(*) as count FROM users WHERE tenant_id = ?', [tenantId], (err2: any, row: any) => {
+                const role = (row?.count || 0) === 0 ? 'admin' : 'user';
+                const newUser = {
+                    id: 'u_' + crypto.randomBytes(4).toString('hex'),
+                    tenant_id: tenantId,
+                    email,
+                    name: profile.displayName,
+                    avatar_url: profile.photos?.[0].value,
+                    role
+                };
 
-            db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url) VALUES (?, ?, ?, ?, ?)',
-                [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url],
-                () => done(null, newUser)
-            );
+                db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url, role) VALUES (?, ?, ?, ?, ?, ?)',
+                    [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url, newUser.role],
+                    () => done(null, newUser)
+                );
+            });
         });
     }
 ));
@@ -110,18 +137,22 @@ passport.use(new GitHubStrategy({
         db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err: any, user: any) => {
             if (user) return done(null, user);
 
-            const newUser = {
-                id: 'u_' + crypto.randomBytes(4).toString('hex'),
-                tenant_id: tenantId as string,
-                email,
-                name: profile.displayName || profile.username,
-                avatar_url: profile.photos?.[0]?.value
-            };
+            db.get('SELECT COUNT(*) as count FROM users WHERE tenant_id = ?', [tenantId], (err2: any, row: any) => {
+                const role = (row?.count || 0) === 0 ? 'admin' : 'user';
+                const newUser = {
+                    id: 'u_' + crypto.randomBytes(4).toString('hex'),
+                    tenant_id: tenantId as string,
+                    email,
+                    name: profile.displayName || profile.username,
+                    avatar_url: profile.photos?.[0]?.value,
+                    role
+                };
 
-            db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url) VALUES (?, ?, ?, ?, ?)',
-                [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url],
-                () => done(null, newUser)
-            );
+                db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url, role) VALUES (?, ?, ?, ?, ?, ?)',
+                    [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url, newUser.role],
+                    () => done(null, newUser)
+                );
+            });
         });
     }
 ));
@@ -134,8 +165,8 @@ app.post('/auth/signup', tenantGuard, async (req: any, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const uid = 'u_' + crypto.randomBytes(4).toString('hex');
 
-    db.run('INSERT INTO users (id, tenant_id, email, password, name) VALUES (?, ?, ?, ?, ?)',
-        [uid, tenant.id, email, hashedPassword, name],
+    db.run('INSERT INTO users (id, tenant_id, email, password, name, role) VALUES (?, ?, ?, ?, ?, ?)',
+        [uid, tenant.id, email, hashedPassword, name, 'user'], // Standard signup is always 'user' by default, or we can count
         (err: any) => {
             if (err) return res.status(400).json({ error: 'USER_ALREADY_EXISTS' });
 
@@ -143,7 +174,7 @@ app.post('/auth/signup', tenantGuard, async (req: any, res) => {
             db.run('UPDATE tenants SET usage_count = usage_count + 1 WHERE id = ?', [tenant.id]);
 
             const token = signJWT({ uid, tid: tenant.id }, jwks[0].kid);
-            res.json({ token, user: { id: uid, email, name } });
+            res.json({ token, user: { id: uid, email, name, role: 'user' } });
         }
     );
 });
@@ -383,11 +414,11 @@ app.get('/auth/verify', (req: any, res) => {
             if (!user) {
                 // Auto-signup if user doesn't exist? (Optional behavior)
                 const uid = 'u_' + crypto.randomBytes(4).toString('hex');
-                db.run('INSERT INTO users (id, tenant_id, email, name) VALUES (?, ?, ?, ?)',
-                    [uid, decoded.tid, decoded.email, decoded.email.split('@')[0]],
+                db.run('INSERT INTO users (id, tenant_id, email, name, role) VALUES (?, ?, ?, ?, ?)',
+                    [uid, decoded.tid, decoded.email, decoded.email.split('@')[0], 'user'],
                     () => {
                         const authToken = signJWT({ uid, tid: decoded.tid }, jwks[0].kid);
-                        res.json({ token: authToken, user: { id: uid, email: decoded.email } });
+                        res.json({ token: authToken, user: { id: uid, email: decoded.email, role: 'user' } });
                     }
                 );
             } else {
@@ -422,9 +453,8 @@ app.post('/auth/mfa/verify', tenantGuard, (req: any, res) => {
 });
 
 
-app.post('/admin/upgrade', tenantGuard, (req: any, res) => {
+app.post('/admin/upgrade', tenantGuard, adminGuard, (req: any, res) => {
     const tenant = req.tenant;
-    // tODO HERE WE NEED TO ADD PAYSTACK TRANSACTION IN THE NEXT PLAN
     const { reference } = req.body;
 
     if (reference) {
@@ -437,7 +467,7 @@ app.post('/admin/upgrade', tenantGuard, (req: any, res) => {
 });
 
 // 6. Manual Key Rotation
-app.post('/admin/rotate-keys', tenantGuard, (req, res) => {
+app.post('/admin/rotate-keys', tenantGuard, adminGuard, (req, res) => {
     rotateKeys();
     res.json({ message: 'Keys rotated', current_kid: jwks[0].kid });
 });
@@ -475,7 +505,7 @@ app.get('/auth/session', tenantGuard, (req: any, res) => {
 });
 
 // 5. Tenant Info (for Dashboard)
-app.get('/admin/me', tenantGuard, (req: any, res) => {
+app.get('/admin/me', tenantGuard, adminGuard, (req: any, res) => {
     res.json(req.tenant);
 });
 

@@ -56,4 +56,8 @@ export class AuthifyService {
     async verifyMFA(code: string): Promise<void> {
         return this.client.verifyMFA(code);
     }
+
+    getConfig() {
+        return this.client.getConfig();
+    }
 }

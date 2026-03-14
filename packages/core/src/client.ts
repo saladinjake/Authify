@@ -41,6 +41,10 @@ export class AuthClient {
         return this.store.getState();
     }
 
+    getConfig() {
+        return this.config;
+    }
+
     async signInWithEmail(email: string): Promise<void> {
         try {
             this.store.setError(null);

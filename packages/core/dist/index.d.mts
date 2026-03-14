@@ -3,6 +3,7 @@ type User = {
     email: string;
     name?: string;
     avatarUrl?: string;
+    role?: 'admin' | 'user';
 };
 type AuthSession = {
     token: string;
@@ -33,6 +34,9 @@ interface AuthConfig {
     googleClientId?: string;
     googleClientSecret?: string;
     googleCallbackUrl?: string;
+    githubClientId?: string;
+    githubClientSecret?: string;
+    githubCallbackUrl?: string;
     theme?: AuthTheme;
 }
 
@@ -62,6 +66,7 @@ declare class AuthClient {
     private applyTheme;
     subscribe(cb: (state: ReturnType<AuthStore['getState']>) => void): () => void;
     get state(): AuthState;
+    getConfig(): AuthConfig;
     signInWithEmail(email: string): Promise<void>;
     verifyMagicLink(token: string): Promise<void>;
     signOut(): Promise<void>;
@@ -90,6 +95,9 @@ declare class AuthApi {
         googleClientId?: string;
         googleClientSecret?: string;
         googleCallbackUrl?: string;
+        githubClientId?: string;
+        githubClientSecret?: string;
+        githubCallbackUrl?: string;
         apiKey?: string;
     }): Promise<void>;
     static verifyMFA(mfaToken: string, code: string, apiKey: string): Promise<AuthSession>;
