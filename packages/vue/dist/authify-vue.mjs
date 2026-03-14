@@ -1,36 +1,36 @@
-import { reactive as I, readonly as A, inject as x, computed as f, defineComponent as S, ref as v, openBlock as y, createElementBlock as h, createElementVNode as t, createTextVNode as w, toDisplayString as c, unref as s, createCommentVNode as p, withModifiers as U, withDirectives as E, vModelText as O, onMounted as P, onUnmounted as L } from "vue";
-import { createAuthify as M } from "@authify/core";
+import { reactive as A, readonly as U, inject as x, computed as f, ref as g, onMounted as I, defineComponent as S, openBlock as y, createElementBlock as h, createElementVNode as t, createTextVNode as k, toDisplayString as c, unref as o, createCommentVNode as p, withModifiers as E, withDirectives as O, vModelText as L, onUnmounted as M } from "vue";
+import { createAuthify as W } from "@authify/core";
 const $ = Symbol("AuthClient"), C = Symbol("AuthState"), st = {
-  install(e, i) {
-    let o;
-    "client" in i ? o = i.client : o = M(i.config);
-    const a = I(o.state);
-    o.subscribe((l) => {
-      Object.assign(a, l);
-    }), e.provide($, o), e.provide(C, A(a));
+  install(e, n) {
+    let s;
+    "client" in n ? s = n.client : s = W(n.config);
+    const l = A(s.state);
+    s.subscribe((r) => {
+      Object.assign(l, r);
+    }), e.provide($, s), e.provide(C, U(l));
   }
 };
-function B() {
+function P() {
   const e = x($);
   if (!e) throw new Error("AuthifyPlugin not installed");
   return e;
 }
-function V() {
+function B() {
   const e = x(C);
   if (!e) throw new Error("AuthifyPlugin not installed");
   return e;
 }
 function b() {
-  const e = B(), i = V(), o = f(() => i.status !== "loading"), a = f(() => i.status === "authenticated");
+  const e = P(), n = B(), s = f(() => n.status !== "loading"), l = f(() => n.status === "authenticated");
   return {
     // State (Using computed to unwrap for easy usage, or just return state directly)
-    state: i,
-    isLoaded: o,
-    isSignedIn: a,
-    user: f(() => i.user),
-    session: f(() => i.session),
-    error: f(() => i.error),
-    status: f(() => i.status),
+    state: n,
+    isLoaded: s,
+    isSignedIn: l,
+    user: f(() => n.user),
+    session: f(() => n.session),
+    error: f(() => n.error),
+    status: f(() => n.status),
     // Actions
     signIn: e.signInWithEmail.bind(e),
     signOut: e.signOut.bind(e),
@@ -38,109 +38,117 @@ function b() {
   };
 }
 function ot() {
-  const { user: e, isSignedIn: i, isLoaded: o } = b();
-  return { user: e, isSignedIn: i, isLoaded: o };
+  const { user: e, isSignedIn: n, isLoaded: s } = b();
+  return { user: e, isSignedIn: n, isLoaded: s };
 }
-const W = {
+function at() {
+  const e = P(), n = g(null), s = () => e.signInWithProvider("google"), l = () => e.signInWithProvider("google");
+  return I(() => {
+    if (typeof window > "u") return;
+    const a = new URLSearchParams(window.location.search).get("token");
+    a && (n.value = a, e.verifyMagicLink(a).catch(console.error), window.history.replaceState({}, document.title, window.location.pathname));
+  }), { login: s, signup: l, token: n };
+}
+const V = {
   key: 0,
   class: "authify-card",
   style: { "text-align": "center" }
 }, z = { style: { color: "#666", "margin-bottom": "24px", "line-height": "1.5" } }, D = {
   key: 1,
   class: "authify-card"
-}, N = {
+}, G = {
   key: 0,
   class: "authify-error"
-}, j = { class: "authify-input-group" }, G = ["disabled"], K = { class: "authify-social-stack" }, at = /* @__PURE__ */ S({
+}, N = { class: "authify-input-group" }, R = ["disabled"], T = { class: "authify-social-stack" }, lt = /* @__PURE__ */ S({
   __name: "SignIn",
   setup(e) {
-    const { signIn: i, signInWithProvider: o, error: a, status: l } = b(), u = v(""), r = v(!1), d = f(() => l.value === "awaiting_verification");
-    async function _(g) {
-      r.value = !0;
+    const { signIn: n, signInWithProvider: s, error: l, status: r } = b(), a = g(""), u = g(!1), d = f(() => r.value === "awaiting_verification");
+    async function w(v) {
+      u.value = !0;
       try {
-        await i(u.value);
+        await n(a.value);
       } finally {
-        r.value = !1;
+        u.value = !1;
       }
     }
     const m = () => window.location.reload();
-    return (g, n) => d.value ? (y(), h("div", W, [
-      n[7] || (n[7] = t("div", { style: { "font-size": "48px", "margin-bottom": "16px" } }, "✉️", -1)),
-      n[8] || (n[8] = t("h2", { class: "authify-title" }, "Check your email", -1)),
+    return (v, i) => d.value ? (y(), h("div", V, [
+      i[7] || (i[7] = t("div", { style: { "font-size": "48px", "margin-bottom": "16px" } }, "✉️", -1)),
+      i[8] || (i[8] = t("h2", { class: "authify-title" }, "Check your email", -1)),
       t("p", z, [
-        n[3] || (n[3] = w(" We've sent a magic link to ", -1)),
-        t("strong", null, c(u.value), 1),
-        n[4] || (n[4] = w(".", -1)),
-        n[5] || (n[5] = t("br", null, null, -1)),
-        n[6] || (n[6] = w(" Click the link in the email to sign in. ", -1))
+        i[3] || (i[3] = k(" We've sent a magic link to ", -1)),
+        t("strong", null, c(a.value), 1),
+        i[4] || (i[4] = k(".", -1)),
+        i[5] || (i[5] = t("br", null, null, -1)),
+        i[6] || (i[6] = k(" Click the link in the email to sign in. ", -1))
       ]),
-      n[9] || (n[9] = t("div", { class: "authify-divider" }, null, -1)),
+      i[9] || (i[9] = t("div", { class: "authify-divider" }, null, -1)),
       t("button", {
         onClick: m,
         class: "authify-btn authify-btn-secondary"
       }, " Back to Sign In ")
     ])) : (y(), h("div", D, [
-      n[11] || (n[11] = t("h2", { class: "authify-title" }, "Sign In", -1)),
-      s(a) ? (y(), h("div", N, c(s(a)), 1)) : p("", !0),
+      i[11] || (i[11] = t("h2", { class: "authify-title" }, "Sign In", -1)),
+      o(l) ? (y(), h("div", G, c(o(l)), 1)) : p("", !0),
       t("form", {
-        onSubmit: U(_, ["prevent"])
+        onSubmit: E(w, ["prevent"])
       }, [
-        t("div", j, [
-          n[10] || (n[10] = t("label", { class: "authify-label" }, "Email", -1)),
-          E(t("input", {
+        t("div", N, [
+          i[10] || (i[10] = t("label", { class: "authify-label" }, "Email", -1)),
+          O(t("input", {
             type: "email",
-            "onUpdate:modelValue": n[0] || (n[0] = (k) => u.value = k),
+            "onUpdate:modelValue": i[0] || (i[0] = (_) => a.value = _),
             class: "authify-input",
             required: "",
             placeholder: "you@example.com"
           }, null, 512), [
-            [O, u.value]
+            [L, a.value]
           ])
         ]),
         t("button", {
           type: "submit",
-          disabled: r.value,
+          disabled: u.value,
           class: "authify-btn authify-btn-primary"
-        }, c(r.value ? "Sending Magic Link..." : "Continue with Email"), 9, G)
+        }, c(u.value ? "Sending Magic Link..." : "Continue with Email"), 9, R)
       ], 32),
-      n[12] || (n[12] = t("div", { class: "authify-divider" }, "or", -1)),
-      t("div", K, [
+      i[12] || (i[12] = t("div", { class: "authify-divider" }, "or", -1)),
+      t("div", T, [
         t("button", {
-          onClick: n[1] || (n[1] = (k) => s(o)("google")),
+          onClick: i[1] || (i[1] = (_) => o(s)("google")),
           class: "authify-btn authify-btn-secondary"
         }, " Sign in with Google "),
         t("button", {
-          onClick: n[2] || (n[2] = (k) => s(o)("github")),
+          onClick: i[2] || (i[2] = (_) => o(s)("github")),
           class: "authify-btn authify-btn-primary",
           style: { background: "#333", border: "1px solid #333" }
         }, " Sign in with GitHub ")
       ])
     ]));
   }
-}), R = ["src"], T = {
+}), j = ["src"], K = {
   key: 0,
   class: "authify-dropdown"
-}, q = { class: "authify-dropdown-header" }, H = { class: "authify-dropdown-name" }, F = { class: "authify-dropdown-email" }, lt = /* @__PURE__ */ S({
+}, q = { class: "authify-dropdown-header" }, H = { class: "authify-dropdown-name" }, F = { class: "authify-dropdown-email" }, rt = /* @__PURE__ */ S({
   __name: "UserButton",
   setup(e) {
-    const { user: i, signOut: o, isSignedIn: a } = b(), l = v(!1), u = v(null), r = (m) => {
-      u.value && !u.value.contains(m.target) && (l.value = !1);
+    const { user: n, signOut: s, isSignedIn: l } = b(), r = g(!1), a = g(null), u = (m) => {
+      a.value && !a.value.contains(m.target) && (r.value = !1);
     };
-    P(() => {
-      document.addEventListener("mousedown", r);
-    }), L(() => {
-      document.removeEventListener("mousedown", r);
+    I(() => {
+      document.addEventListener("mousedown", u);
+    }), M(() => {
+      document.removeEventListener("mousedown", u);
     });
     const d = () => {
-      l.value = !l.value;
-    }, _ = () => {
-      o(), l.value = !1;
+      r.value = !r.value;
+    }, w = () => {
+      s(), r.value = !1;
     };
-    return (m, g) => s(a) && s(i) ? (y(), h("div", {
+    return (m, v) => o(l) && o(n) ? (y(), h("div", {
       key: 0,
       class: "authify-user-button-container",
       ref_key: "menuRef",
-      ref: u,
+      ref: a,
       style: { position: "relative", display: "inline-block" }
     }, [
       t("button", {
@@ -148,19 +156,19 @@ const W = {
         class: "authify-user-button-trigger"
       }, [
         t("img", {
-          src: s(i).avatarUrl || `https://ui-avatars.com/api/?name=${s(i).name || "User"}`,
+          src: o(n).avatarUrl || `https://ui-avatars.com/api/?name=${o(n).name || "User"}`,
           alt: "Profile",
           class: "authify-avatar"
-        }, null, 8, R)
+        }, null, 8, j)
       ]),
-      l.value ? (y(), h("div", T, [
+      r.value ? (y(), h("div", K, [
         t("div", q, [
-          t("div", H, c(s(i).name || "User"), 1),
-          t("div", F, c(s(i).email), 1)
+          t("div", H, c(o(n).name || "User"), 1),
+          t("div", F, c(o(n).email), 1)
         ]),
-        g[0] || (g[0] = t("button", { class: "authify-dropdown-item" }, "Manage Account", -1)),
+        v[0] || (v[0] = t("button", { class: "authify-dropdown-item" }, "Manage Account", -1)),
         t("button", {
-          onClick: _,
+          onClick: w,
           class: "authify-dropdown-item authify-dropdown-item-danger"
         }, " Sign Out ")
       ])) : p("", !0)
@@ -173,32 +181,32 @@ const W = {
 }, Q = { class: "authify-profile-info" }, X = ["src", "alt"], Y = {
   class: "authify-title",
   style: { margin: "0", "font-size": "20px" }
-}, Z = { style: { color: "#888", "font-size": "14px" } }, tt = { class: "authify-input-group" }, it = { class: "authify-monospace" }, ut = /* @__PURE__ */ S({
+}, Z = { style: { color: "#888", "font-size": "14px" } }, tt = { class: "authify-input-group" }, nt = { class: "authify-monospace" }, ut = /* @__PURE__ */ S({
   __name: "UserProfile",
   setup(e) {
-    const { user: i, signOut: o, isLoaded: a, isSignedIn: l } = b(), u = () => {
-      o();
+    const { user: n, signOut: s, isLoaded: l, isSignedIn: r } = b(), a = () => {
+      s();
     };
-    return (r, d) => s(a) && s(l) && s(i) ? (y(), h("div", J, [
+    return (u, d) => o(l) && o(r) && o(n) ? (y(), h("div", J, [
       t("div", Q, [
         t("img", {
-          src: s(i).avatarUrl,
-          alt: s(i).name,
+          src: o(n).avatarUrl,
+          alt: o(n).name,
           class: "authify-avatar-lg"
         }, null, 8, X),
         t("div", null, [
-          t("h2", Y, c(s(i).name), 1),
-          t("div", Z, c(s(i).email), 1)
+          t("h2", Y, c(o(n).name), 1),
+          t("div", Z, c(o(n).email), 1)
         ])
       ]),
       t("div", tt, [
         d[0] || (d[0] = t("label", { class: "authify-label" }, "User ID", -1)),
-        t("div", it, c(s(i).id), 1)
+        t("div", nt, c(o(n).id), 1)
       ]),
       t("div", { style: { "margin-top": "24px", display: "flex", gap: "10px" } }, [
         d[1] || (d[1] = t("button", { class: "authify-btn authify-btn-secondary" }, " Edit Profile ", -1)),
         t("button", {
-          onClick: u,
+          onClick: a,
           class: "authify-btn authify-btn-primary",
           style: { "background-color": "#ef4444", color: "white" }
         }, " Sign Out ")
@@ -210,11 +218,12 @@ export {
   $ as AuthClientKey,
   C as AuthStateKey,
   st as AuthifyPlugin,
-  at as SignIn,
-  lt as UserButton,
+  lt as SignIn,
+  rt as UserButton,
   ut as UserProfile,
   b as useAuth,
-  B as useAuthClient,
-  V as useAuthState,
+  P as useAuthClient,
+  B as useAuthState,
+  at as useGoogleAuth,
   ot as useUser
 };

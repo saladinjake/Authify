@@ -35,6 +35,9 @@ class AuthifyService {
     async signIn(credentials) {
         return this.client.signIn(credentials);
     }
+    async verifyMagicLink(token) {
+        return this.client.verifyMagicLink(token);
+    }
     async signUp(data) {
         return this.client.signUp(data);
     }
@@ -613,9 +616,54 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "17.3.12", ngImpo
                 }]
         }] });
 
+class GoogleAuthService {
+    authify;
+    tokenSubject = new BehaviorSubject(null);
+    token$ = this.tokenSubject.asObservable();
+    constructor(authify) {
+        this.authify = authify;
+        this.checkCallback();
+    }
+    async checkCallback() {
+        if (typeof window === 'undefined')
+            return;
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get('token');
+        if (urlToken) {
+            this.tokenSubject.next(urlToken);
+            // Verify magic link acts as a way to convert the token to a session via backend mapping
+            try {
+                await this.authify.verifyMagicLink(urlToken);
+            }
+            catch (err) {
+                console.error(err);
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+    async login() {
+        return this.authify.signInWithProvider('google');
+    }
+    async signup() {
+        // Social signup is the same as login
+        return this.authify.signInWithProvider('google');
+    }
+    getToken() {
+        return this.tokenSubject.value;
+    }
+    static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "17.3.12", ngImport: i0, type: GoogleAuthService, deps: [{ token: AuthifyService }], target: i0.ɵɵFactoryTarget.Injectable });
+    static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "17.3.12", ngImport: i0, type: GoogleAuthService, providedIn: 'root' });
+}
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "17.3.12", ngImport: i0, type: GoogleAuthService, decorators: [{
+            type: Injectable,
+            args: [{
+                    providedIn: 'root'
+                }]
+        }], ctorParameters: () => [{ type: AuthifyService }] });
+
 /**
  * Generated bundle index. Do not edit.
  */
 
-export { AUTHIFY_CONFIG, AuthifyModule, AuthifyService, SignInComponent, SignUpComponent, UserButtonComponent, UserProfileComponent };
+export { AUTHIFY_CONFIG, AuthifyModule, AuthifyService, GoogleAuthService, SignInComponent, SignUpComponent, UserButtonComponent, UserProfileComponent };
 //# sourceMappingURL=authify-angular.mjs.map

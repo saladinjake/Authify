@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as GitHubStrategy } from 'passport-github2';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcrypt';
@@ -96,6 +97,35 @@ passport.use(new GoogleStrategy({
     }
 ));
 
+passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_CLIENT_ID || 'DUMMY_GITHUB_ID',
+    clientSecret: process.env.GITHUB_CLIENT_SECRET || 'DUMMY_GITHUB_SECRET',
+    callbackURL: `http://localhost:${PORT}/auth/github/callback`,
+    passReqToCallback: true
+},
+    async (req: any, accessToken, refreshToken, profile, done) => {
+        const email = profile.emails?.[0]?.value || profile.username || profile.id;
+        const tenantId = req.query.state;
+
+        db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err: any, user: any) => {
+            if (user) return done(null, user);
+
+            const newUser = {
+                id: 'u_' + crypto.randomBytes(4).toString('hex'),
+                tenant_id: tenantId as string,
+                email,
+                name: profile.displayName || profile.username,
+                avatar_url: profile.photos?.[0]?.value
+            };
+
+            db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url) VALUES (?, ?, ?, ?, ?)',
+                [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url],
+                () => done(null, newUser)
+            );
+        });
+    }
+));
+
 
 app.post('/auth/signup', tenantGuard, async (req: any, res) => {
     const { email, password, name } = req.body;
@@ -145,26 +175,192 @@ app.post('/auth/login', tenantGuard, (req: any, res) => {
 });
 
 // Google OAuth Routes
-app.get('/auth/google', (req: any, res, next) => {
-    const { api_key, state } = req.query; // state should be the tenant_id or redirect_uri
-    passport.authenticate('google', {
-        scope: ['profile', 'email'],
-        state: state || api_key
+// 1. Generic OAuth Initiation Route
+// 1. Generic OAuth Initiation Route
+app.all('/auth/:provider', (req: any, res, next) => {
+    const { provider } = req.params;
+    
+    // Extract credentials from headers or query
+    const api_key = req.headers['x-api-key'] || req.headers['X-API-KEY'] || req.query.api_key;
+    const state = req.headers['x-state'] || req.headers['x-client-id'] || req.query.state || api_key;
+    
+    const google_client_id = req.headers['x-google-client-id'] || req.query.google_client_id;
+    const google_client_secret = req.headers['x-google-client-secret'] || req.query.google_client_secret;
+    const google_callback_url = req.headers['x-google-callback-url'] || req.query.google_callback_url;
+
+    const github_client_id = req.headers['x-github-client-id'] || req.query.github_client_id;
+    const github_client_secret = req.headers['x-github-client-secret'] || req.query.github_client_secret;
+    const github_callback_url = req.headers['x-github-callback-url'] || req.query.github_callback_url;
+
+    const frontend_url = req.headers['x-frontend-url'] || req.headers['X-FRONTEND-URL'] || req.query.frontend_url;
+    
+    const isAjax = req.method === 'POST' || req.headers['x-requested-with'] === 'XMLHttpRequest';
+
+    if (frontend_url) {
+        res.cookie('authify_frontend_url', frontend_url, { httpOnly: true, maxAge: 600000 });
+    }
+
+    const deliver = (url: string) => {
+        if (isAjax) return res.json({ redirectUrl: url });
+        return res.redirect(url);
+    };
+
+    // Dynamic Google credentials
+    if (provider === 'google' && google_client_id && google_client_secret) {
+        console.log(`[Authify] Using dynamic Google credentials for tenant: ${api_key}`);
+        const callback = google_callback_url || `http://localhost:${PORT}/auth/google/callback`;
+        
+        res.cookie('dynamic_creds', JSON.stringify({
+            provider: 'google',
+            clientId: google_client_id,
+            clientSecret: google_client_secret,
+            callbackURL: callback
+        }), { httpOnly: true, maxAge: 600000 });
+
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
+            `response_type=code&` +
+            `client_id=${google_client_id}&` +
+            `redirect_uri=${encodeURIComponent(callback)}&` +
+            `scope=profile%20email&` +
+            `state=${state}`;
+        
+        return deliver(authUrl);
+    }
+
+    // Dynamic GitHub credentials
+    if (provider === 'github' && github_client_id && github_client_secret) {
+        console.log(`[Authify] Using dynamic GitHub credentials for tenant: ${api_key}`);
+        const callback = github_callback_url || `http://localhost:${PORT}/auth/github/callback`;
+        
+        res.cookie('dynamic_creds', JSON.stringify({
+            provider: 'github',
+            clientId: github_client_id,
+            clientSecret: github_client_secret,
+            callbackURL: callback
+        }), { httpOnly: true, maxAge: 600000 });
+
+        const authUrl = `https://github.com/login/oauth/authorize?` + 
+            `client_id=${github_client_id}&` +
+            `redirect_uri=${encodeURIComponent(callback)}&` +
+            `scope=user:email&` +
+            `state=${state}`;
+        
+        return deliver(authUrl);
+    }
+
+    // Default Passport Fallback
+    const scope = provider === 'google' ? ['profile', 'email'] : ['user:email'];
+    passport.authenticate(provider, {
+        scope,
+        state: state
     })(req, res, next);
 });
 
-app.get('/auth/google/callback',
-    passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth_failed' }),
-    (req: any, res) => {
-        const user = req.user;
+// 2. Generic OAuth Callback Route
+app.get('/auth/:provider/callback', async (req: any, res, next) => {
+    const { provider } = req.params;
+    const dynamicCredsCookie = req.cookies.dynamic_creds;
+    
+    if (dynamicCredsCookie && req.query.code) {
+        try {
+            const creds = JSON.parse(dynamicCredsCookie);
+            if (creds.provider !== provider) throw new Error('Provider mismatch');
+
+            const { code, state: tenantId } = req.query;
+            let profile: any;
+
+            if (provider === 'google') {
+                const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        code: code as string,
+                        client_id: creds.clientId,
+                        client_secret: creds.clientSecret,
+                        redirect_uri: creds.callbackURL,
+                        grant_type: 'authorization_code'
+                    })
+                });
+                const tokens: any = await tokenResponse.json();
+                if (!tokens.access_token) throw new Error('Google token exchange failed');
+
+                const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokens.access_token}` }
+                });
+                profile = await profileResponse.json();
+            } else if (provider === 'github') {
+                const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        code,
+                        client_id: creds.clientId,
+                        client_secret: creds.clientSecret,
+                        redirect_uri: creds.callbackURL
+                    })
+                });
+                const tokens: any = await tokenResponse.json();
+                if (!tokens.access_token) throw new Error('GitHub token exchange failed');
+
+                const profileResponse = await fetch('https://api.github.com/user', {
+                    headers: { Authorization: `Bearer ${tokens.access_token}` }
+                });
+                profile = await profileResponse.json();
+                
+                // Fetch email if not public
+                if (!profile.email) {
+                    const emailResponse = await fetch('https://api.github.com/user/emails', {
+                        headers: { Authorization: `Bearer ${tokens.access_token}` }
+                    });
+                    const emails: any = await emailResponse.json();
+                    profile.email = emails.find((e: any) => e.primary)?.email || emails[0]?.email;
+                }
+            }
+
+            // Find or Create user
+            db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [profile.email, tenantId], (err: any, user: any) => {
+                const finalize = (u: any) => {
+                    const token = signJWT({ uid: u.id, tid: tenantId }, jwks[0].kid);
+                    res.clearCookie('dynamic_creds');
+                    const frontendUrl = req.cookies.authify_frontend_url || process.env.FRONTEND_URL || 'http://localhost:4200';
+                    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+                };
+
+                if (user) return finalize(user);
+
+                const newUser = {
+                    id: 'u_' + crypto.randomBytes(4).toString('hex'),
+                    tenant_id: tenantId as string,
+                    email: profile.email,
+                    name: profile.name || profile.username || profile.given_name,
+                    avatar_url: profile.picture || profile.avatar_url
+                };
+
+                db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url) VALUES (?, ?, ?, ?, ?)',
+                    [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url],
+                    () => finalize(newUser)
+                );
+            });
+            return;
+        } catch (error) {
+            console.error(`[Authify] Dynamic ${provider} OAuth Callback Error:`, error);
+            const frontendUrl = req.cookies.authify_frontend_url || process.env.FRONTEND_URL || 'http://localhost:4200';
+            return res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+        }
+    }
+
+    // Default Passport Fallback
+    passport.authenticate(provider, { session: false }, (err: any, user: any) => {
+        if (err || !user) {
+            const frontendUrl = req.cookies.authify_frontend_url || process.env.FRONTEND_URL || 'http://localhost:4200';
+            return res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+        }
         const tenantId = req.query.state;
         const token = signJWT({ uid: user.id, tid: tenantId }, jwks[0].kid);
-
-        // Redirect back to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = req.cookies.authify_frontend_url || process.env.FRONTEND_URL || 'http://localhost:4200';
         res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
-    }
-);
+    })(req, res, next);
+});
 
 // Magic Link Route
 app.post('/auth/magic-link', tenantGuard, (req: any, res) => {

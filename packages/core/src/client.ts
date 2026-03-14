@@ -76,7 +76,15 @@ export class AuthClient {
         try {
             this.store.setError(null);
             console.log(`[Authify] Redirecting to ${provider}...`);
-            await AuthApi.socialLogin(provider, this.config.clientId);
+            await AuthApi.socialLogin(provider, this.config.clientId, {
+                googleClientId: this.config.googleClientId,
+                googleClientSecret: this.config.googleClientSecret,
+                googleCallbackUrl: this.config.googleCallbackUrl,
+                githubClientId: this.config.githubClientId,
+                githubClientSecret: this.config.githubClientSecret,
+                githubCallbackUrl: this.config.githubCallbackUrl,
+                apiKey: this.config.apiKey
+            });
         } catch (err: any) {
             this.store.setError(err.message || 'Social login failed');
             throw err;

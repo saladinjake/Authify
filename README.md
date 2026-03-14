@@ -16,6 +16,7 @@ Authify is an authentication platform that provides developers with a complete a
 
 ### 🏢 Enterprise Features
 - ✅ **Multi-Tenancy** - Each developer gets their own isolated tenant
+- ✅ **Dynamic Google OAuth** - Consumers can supply their own Google credentials
 - ✅ **Rate Limiting** - Free tier: 200 auth events/month
 - ✅ **Subscription Management** - Upgrade to PRO via Paystack
 - ✅ **Admin Dashboard** - Manage API keys, settings, and usage
@@ -87,7 +88,11 @@ import { AuthifyProvider, SignIn, UserButton, useAuth } from '@authify/react';
 const config = {
   clientId: 'your_tenant_id',
   apiKey: 'your_api_key',
-  domain: 'localhost:5000'
+  domain: 'localhost:5000',
+  // Optional: Supply your own Google OAuth credentials
+  googleClientId: '...',
+  googleClientSecret: '...',
+  googleCallbackUrl: '...'
 };
 
 function App() {
@@ -109,7 +114,16 @@ function MyApp() {
 
 ```vue
 <script setup>
-import { AuthifyPlugin, SignIn, UserButton, useAuth } from '@authify/vue';
+import { SignIn, UserButton, useAuth } from '@authify/vue';
+
+const authConfig = {
+  clientId: 'your_tenant_id',
+  apiKey: 'your_api_key',
+  domain: 'localhost:5000',
+  googleClientId: '...',
+  googleClientSecret: '...',
+  googleCallbackUrl: '...'
+};
 
 const { isSignedIn, user } = useAuth();
 </script>
@@ -130,7 +144,10 @@ import { AuthifyModule } from '@authify/angular';
     AuthifyModule.forRoot({
       clientId: 'your_tenant_id',
       apiKey: 'your_api_key',
-      domain: 'localhost:5000'
+      domain: 'localhost:5000',
+      googleClientId: '...',
+      googleClientSecret: '...',
+      googleCallbackUrl: '...'
     })
   ]
 })

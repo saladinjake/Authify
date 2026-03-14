@@ -28,6 +28,7 @@ __export(index_exports, {
   useAuth: () => useAuth,
   useAuthClient: () => useAuthClient,
   useAuthState: () => useAuthState,
+  useGoogleAuth: () => useGoogleAuth,
   useUser: () => useUser
 });
 module.exports = __toCommonJS(index_exports);
@@ -96,6 +97,23 @@ var useAuth = () => {
 var useUser = () => {
   const { user, isSignedIn, isLoaded } = useAuth();
   return { user, isSignedIn, isLoaded };
+};
+var useGoogleAuth = () => {
+  const client = useAuthClient();
+  const [token, setToken] = (0, import_react2.useState)(null);
+  const login = (0, import_react2.useCallback)(() => client.signInWithProvider("google"), [client]);
+  const signup = (0, import_react2.useCallback)(() => client.signInWithProvider("google"), [client]);
+  (0, import_react2.useEffect)(() => {
+    if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get("token");
+    if (urlToken) {
+      setToken(urlToken);
+      client.verifyMagicLink(urlToken).catch(console.error);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [client]);
+  return { login, signup, token };
 };
 
 // src/components/SignIn.tsx
@@ -311,5 +329,6 @@ var UserProfile = () => {
   useAuth,
   useAuthClient,
   useAuthState,
+  useGoogleAuth,
   useUser
 });

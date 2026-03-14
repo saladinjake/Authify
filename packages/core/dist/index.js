@@ -88,8 +88,17 @@ var AuthApi = class {
     }
     return res.json();
   }
-  static async socialLogin(provider, clientId) {
-    window.location.href = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
+  static async socialLogin(provider, clientId, extra) {
+    let url = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
+    if (extra == null ? void 0 : extra.apiKey) {
+      url += `&api_key=${extra.apiKey}`;
+    }
+    if (provider === "google" && extra) {
+      if (extra.googleClientId) url += `&google_client_id=${extra.googleClientId}`;
+      if (extra.googleClientSecret) url += `&google_client_secret=${extra.googleClientSecret}`;
+      if (extra.googleCallbackUrl) url += `&google_callback_url=${extra.googleCallbackUrl}`;
+    }
+    window.location.href = url;
   }
   static async verifyMFA(mfaToken, code, apiKey) {
     const res = await fetch(`${BACKEND_URL}/auth/mfa/verify`, {
@@ -324,7 +333,12 @@ var AuthClient = class {
     try {
       this.store.setError(null);
       console.log(`[Authify] Redirecting to ${provider}...`);
-      await AuthApi.socialLogin(provider, this.config.clientId);
+      await AuthApi.socialLogin(provider, this.config.clientId, {
+        googleClientId: this.config.googleClientId,
+        googleClientSecret: this.config.googleClientSecret,
+        googleCallbackUrl: this.config.googleCallbackUrl,
+        apiKey: this.config.apiKey
+      });
     } catch (err) {
       this.store.setError(err.message || "Social login failed");
       throw err;

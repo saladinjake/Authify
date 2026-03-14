@@ -36,5 +36,11 @@ export interface AuthConfig {
     clientId: string;
     apiKey: string;
     domain: string;
+    googleClientId?: string;
+    googleClientSecret?: string;
+    googleCallbackUrl?: string;
+    githubClientId?: string;
+    githubClientSecret?: string;
+    githubCallbackUrl?: string;
     theme?: AuthTheme;
 }

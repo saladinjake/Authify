@@ -30,6 +30,9 @@ interface AuthConfig {
     clientId: string;
     apiKey: string;
     domain: string;
+    googleClientId?: string;
+    googleClientSecret?: string;
+    googleCallbackUrl?: string;
     theme?: AuthTheme;
 }
 
@@ -83,7 +86,12 @@ declare class AuthApi {
     static login(email: string, password: string, apiKey: string): Promise<any>;
     static loginWithEmail(email: string, apiKey: string): Promise<void>;
     static signup(email: string, password: string, name: string, apiKey: string): Promise<any>;
-    static socialLogin(provider: string, clientId: string): Promise<void>;
+    static socialLogin(provider: string, clientId: string, extra?: {
+        googleClientId?: string;
+        googleClientSecret?: string;
+        googleCallbackUrl?: string;
+        apiKey?: string;
+    }): Promise<void>;
     static verifyMFA(mfaToken: string, code: string, apiKey: string): Promise<AuthSession>;
     static validateSession(token: string, apiKey: string): Promise<AuthSession>;
     static getTenant(apiKey: string): Promise<any>;

@@ -8,6 +8,7 @@ import { ComputedRef } from 'vue';
 import { DefineComponent } from 'vue';
 import { Plugin as Plugin_2 } from 'vue';
 import { PublicProps } from 'vue';
+import { Ref } from 'vue';
 import { User } from '@authify/core';
 
 export declare const AuthClientKey: unique symbol;
@@ -34,6 +35,12 @@ export declare function useAuth(): {
 export declare function useAuthClient(): AuthClient;
 
 export declare function useAuthState(): AuthState;
+
+export declare function useGoogleAuth(): {
+    login: () => Promise<void>;
+    signup: () => Promise<void>;
+    token: Ref<string | null, string | null>;
+};
 
 export declare const UserButton: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {
 menuRef: HTMLDivElement;

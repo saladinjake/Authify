@@ -35,7 +35,7 @@ var useAuthState = () => {
 };
 
 // src/hooks.ts
-import { useCallback } from "react";
+import { useCallback, useEffect as useEffect2, useState as useState2 } from "react";
 var useAuth = () => {
   const client = useAuthClient();
   const state = useAuthState();
@@ -63,14 +63,31 @@ var useUser = () => {
   const { user, isSignedIn, isLoaded } = useAuth();
   return { user, isSignedIn, isLoaded };
 };
+var useGoogleAuth = () => {
+  const client = useAuthClient();
+  const [token, setToken] = useState2(null);
+  const login = useCallback(() => client.signInWithProvider("google"), [client]);
+  const signup = useCallback(() => client.signInWithProvider("google"), [client]);
+  useEffect2(() => {
+    if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get("token");
+    if (urlToken) {
+      setToken(urlToken);
+      client.verifyMagicLink(urlToken).catch(console.error);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [client]);
+  return { login, signup, token };
+};
 
 // src/components/SignIn.tsx
-import { useState as useState2 } from "react";
+import { useState as useState3 } from "react";
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
 var SignIn = () => {
   const { signIn, signInWithProvider, error, isLoaded, isAwaitingVerification } = useAuth();
-  const [email, setEmail] = useState2("");
-  const [loading, setLoading] = useState2(false);
+  const [email, setEmail] = useState3("");
+  const [loading, setLoading] = useState3(false);
   if (!isLoaded) return /* @__PURE__ */ jsx2("div", { children: "Loading..." });
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -156,13 +173,13 @@ var SignIn = () => {
 };
 
 // src/components/UserButton.tsx
-import { useState as useState3, useRef, useEffect as useEffect2 } from "react";
+import { useState as useState4, useRef, useEffect as useEffect3 } from "react";
 import { jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
 var UserButton = () => {
   const { user, signOut, isSignedIn } = useAuth();
-  const [isOpen, setIsOpen] = useState3(false);
+  const [isOpen, setIsOpen] = useState4(false);
   const menuRef = useRef(null);
-  useEffect2(() => {
+  useEffect3(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsOpen(false);
@@ -220,12 +237,12 @@ var Protected = ({ children, fallback }) => {
 };
 
 // src/components/UserProfile.tsx
-import { useState as useState4 } from "react";
+import { useState as useState5 } from "react";
 import "@authify/core/styles.css";
 import { jsx as jsx5, jsxs as jsxs3 } from "react/jsx-runtime";
 var UserProfile = () => {
   const { user, signOut, isLoaded, isSignedIn } = useAuth();
-  const [editing, setEditing] = useState4(false);
+  const [editing, setEditing] = useState5(false);
   if (!isLoaded || !isSignedIn || !user) return null;
   return /* @__PURE__ */ jsxs3("div", { className: "authify-card", style: { maxWidth: "400px" }, children: [
     /* @__PURE__ */ jsxs3("div", { className: "authify-profile-info", children: [
@@ -276,5 +293,6 @@ export {
   useAuth,
   useAuthClient,
   useAuthState,
+  useGoogleAuth,
   useUser
 };

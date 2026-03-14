@@ -15,6 +15,7 @@ export declare class AuthifyService {
         email: string;
         password?: string;
     }): Promise<void>;
+    verifyMagicLink(token: string): Promise<void>;
     signUp(data: {
         email: string;
         password?: string;

@@ -72,9 +72,66 @@ export class AuthApi {
         return res.json();
     }
 
-    static async socialLogin(provider: string, clientId: string): Promise<void> {
+    static async socialLogin(provider: string, clientId: string, extra?: {
+        googleClientId?: string;
+        googleClientSecret?: string;
+        googleCallbackUrl?: string;
+        githubClientId?: string;
+        githubClientSecret?: string;
+        githubCallbackUrl?: string;
+        apiKey?: string;
+    }): Promise<void> {
+        // Try to use headers first (Secure & Clean)
+        try {
+            const headers: Record<string, string> = {
+                'X-API-KEY': extra?.apiKey || '',
+                'X-STATE': clientId
+            };
 
-        window.location.href = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
+            if (extra?.googleClientId) headers['X-GOOGLE-CLIENT-ID'] = extra.googleClientId;
+            if (extra?.googleClientSecret) headers['X-GOOGLE-CLIENT-SECRET'] = extra.googleClientSecret;
+            if (extra?.googleCallbackUrl) headers['X-GOOGLE-CALLBACK-URL'] = extra.googleCallbackUrl;
+            
+            if (extra?.githubClientId) headers['X-GITHUB-CLIENT-ID'] = extra.githubClientId;
+            if (extra?.githubClientSecret) headers['X-GITHUB-CLIENT-SECRET'] = extra.githubClientSecret;
+            if (extra?.githubCallbackUrl) headers['X-GITHUB-CALLBACK-URL'] = extra.githubCallbackUrl;
+
+            const res = await fetch(`${BACKEND_URL}/auth/${provider}`, {
+                method: 'POST',
+                headers
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn('[Authify] Header-based auth initiation failed, falling back to query params', err);
+        }
+
+        // Fallback: Query parameters
+        let url = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
+
+        if (extra?.apiKey) {
+            url += `&api_key=${extra.apiKey}`;
+        }
+
+        if (provider === 'google' && extra) {
+            if (extra.googleClientId) url += `&google_client_id=${extra.googleClientId}`;
+            if (extra.googleClientSecret) url += `&google_client_secret=${extra.googleClientSecret}`;
+            if (extra.googleCallbackUrl) url += `&google_callback_url=${extra.googleCallbackUrl}`;
+        }
+
+        if (provider === 'github' && extra) {
+            if (extra.githubClientId) url += `&github_client_id=${extra.githubClientId}`;
+            if (extra.githubClientSecret) url += `&github_client_secret=${extra.githubClientSecret}`;
+            if (extra.githubCallbackUrl) url += `&github_callback_url=${extra.githubCallbackUrl}`;
+        }
+
+        window.location.href = url;
     }
 
     static async verifyMFA(mfaToken: string, code: string, apiKey: string): Promise<AuthSession> {

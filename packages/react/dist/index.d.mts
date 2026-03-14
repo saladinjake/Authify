@@ -32,6 +32,11 @@ declare const useUser: () => {
     isSignedIn: boolean;
     isLoaded: boolean;
 };
+declare const useGoogleAuth: () => {
+    login: () => Promise<void>;
+    signup: () => Promise<void>;
+    token: string | null;
+};
 
 declare const SignIn: () => react_jsx_runtime.JSX.Element;
 
@@ -45,4 +50,4 @@ declare const Protected: ({ children, fallback }: ProtectedProps) => react_jsx_r
 
 declare const UserProfile: () => react_jsx_runtime.JSX.Element | null;
 
-export { AuthifyProvider, Protected, SignIn, UserButton, UserProfile, useAuth, useAuthClient, useAuthState, useUser };
+export { AuthifyProvider, Protected, SignIn, UserButton, UserProfile, useAuth, useAuthClient, useAuthState, useGoogleAuth, useUser };

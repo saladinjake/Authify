@@ -187,6 +187,7 @@
             margin-bottom: 12px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -561,6 +562,136 @@ npm run dev --workspace=@authify/backend</code></pre>
                 </div>
             </div>
 
+            <!-- Installation Page -->
+            <div class="doc-page" id="installation">
+                <div class="doc-header">
+                    <h2>Installation</h2>
+                    <p>Add Authify to your existing project</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Frontend Packages</h3>
+                    <p>Install the core package and the specific SDK for your framework:</p>
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Terminal</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-bash"># For React
+npm install @authify/react @authify/core
+
+# For Vue
+npm install @authify/vue @authify/core
+
+# For Angular
+npm install @authify/angular @authify/core</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Backend Setup</h3>
+                    <p>If you are self-hosting the Authify backend, you can install it via npm or clone the repo:</p>
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Terminal</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-bash">git clone https://github.com/authify/authify.git
+cd Authify/AuthifyCore/backend
+npm install
+npm run dev</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('quick-start')">← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('authentication')">Next: Authentication →</button>
+                </div>
+            </div>
+
+            <!-- Authentication Page -->
+            <div class="doc-page" id="authentication">
+                <div class="doc-header">
+                    <h2>Authentication</h2>
+                    <p>Learn about the various authentication methods supported by Authify</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Email & Password</h3>
+                    <p>Traditional authentication using email and hashed passwords (bcrypt).</p>
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Code Example</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-typescript">await auth.signIn({ 
+  email: 'user@example.com', 
+  password: 'secure-password' 
+});</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Social Login (OAuth)</h3>
+                    <p>Support for Google and GitHub out of the box.</p>
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Code Example</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-typescript">auth.signInWithProvider('google');</code></pre>
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('installation')">← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('multi-tenancy')">Next: Multi-Tenancy →</button>
+                </div>
+            </div>
+
+            <!-- Multi-Tenancy Page -->
+            <div class="doc-page" id="multi-tenancy">
+                <div class="doc-header">
+                    <h2>Multi-Tenancy</h2>
+                    <p>Isolation and customization for enterprise consumers</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>What is Multi-Tenancy?</h3>
+                    <p>Authify allows you to serve multiple independent organizations (tenants) from a single backend instance. Each tenant has its own isolated users, settings, and credentials.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>Dynamic Google OAuth Configuration <span class="badge pro">PRO</span></h3>
+                    <p>Consumers can now supply their own Google OAuth credentials directly in the frontend configuration. This is ideal for white-label solutions where each client wants to use their own Google App identity.</p>
+                    
+                    <div class="code-example">
+                        <div class="code-header">
+                            <span>Config Example</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code class="language-typescript">const authConfig = {
+  clientId: 'tenant_abc_123',
+  apiKey: 'ak_live_...',
+  domain: 'auth.your-service.com',
+  // Dynamic Google Credentials
+  googleClientId: 'your-google-client-id.apps.googleusercontent.com',
+  googleClientSecret: 'your-google-client-secret',
+  googleCallbackUrl: 'https://auth.your-service.com/auth/google/callback'
+};</code></pre>
+                    </div>
+
+                    <div class="warning-box">
+                        <strong>Security Warning:</strong> Passwords and secrets should be handled with care. If not supplied, Authify falls back to the backend's environment variables but will log a warning for tenants.
+                    </div>
+                </div>
+
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('authentication')">← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('react')">Next: React SDK →</button>
+                </div>
+            </div>
+
             <!-- React SDK Page -->
             <div class="doc-page" id="react">
                 <div class="doc-header">
@@ -597,7 +728,11 @@ import '@authify/core/styles.css';
 const authConfig = {
   clientId: 'dev_tenant_1',
   apiKey: 'dev_api_key_123',
-  domain: 'localhost:5000'
+  domain: 'localhost:5000',
+  // Optional: Supply your own Google OAuth credentials
+  googleClientId: '...',
+  googleClientSecret: '...',
+  googleCallbackUrl: '...'
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -710,7 +845,11 @@ app.use(AuthifyPlugin, {
   config: {
     clientId: 'dev_tenant_1',
     apiKey: 'dev_api_key_123',
-    domain: 'localhost:5000'
+    domain: 'localhost:5000',
+    // Optional: Supply your own Google OAuth credentials
+    googleClientId: '...',
+    googleClientSecret: '...',
+    googleCallbackUrl: '...'
   }
 });
 
@@ -790,7 +929,11 @@ import '@authify/core/styles.css';
     AuthifyModule.forRoot({
       clientId: 'dev_tenant_1',
       apiKey: 'dev_api_key_123',
-      domain: 'localhost:5000'
+      domain: 'localhost:5000',
+      // Optional: Supply your own Google OAuth credentials
+      googleClientId: '...',
+      googleClientSecret: '...',
+      googleCallbackUrl: '...'
     })
   ],
   bootstrap: [AppComponent]
@@ -836,26 +979,94 @@ export class AppComponent {
                 </div>
             </div>
 
-            <!-- Add more pages here... -->
+            <!-- Rate Limiting Page -->
+            <div class="doc-page" id="rate-limiting">
+                <div class="doc-header">
+                    <h2>Rate Limiting</h2>
+                    <p>Protect your API from abuse</p>
+                </div>
+                <div class="doc-section">
+                    <h3>Adaptive Rate Limiting</h3>
+                    <p>Authify includes built-in rate limiting based on tenant plans. Free tiers are limited to 200 authentication operations per month.</p>
+                </div>
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('multi-tenancy')">← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('mfa')">Next: MFA →</button>
+                </div>
+            </div>
+
+            <!-- MFA Page -->
+            <div class="doc-page" id="mfa">
+                <div class="doc-header">
+                    <h2>Multi-Factor Auth</h2>
+                    <p>Secure accounts with an extra layer of protection</p>
+                </div>
+                <div class="doc-section">
+                    <h3>TOTP Support</h3>
+                    <p>Authify supports Time-based One-Time Passwords (TOTP) compatible with Google Authenticator and Authy.</p>
+                </div>
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('rate-limiting')">← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('react')">Next: React SDK →</button>
+                </div>
+            </div>
+
+            <!-- API Auth Page -->
+            <div class="doc-page" id="api-auth">
+                <div class="doc-header">
+                    <h2>Authentication API</h2>
+                    <p>Direct REST API endpoints for custom integrations</p>
+                </div>
+                <div class="doc-section">
+                    <h3>POST /auth/login</h3>
+                    <p>Authenticate a user with email and password.</p>
+                    <pre><code class="language-json">{
+  "email": "user@example.com",
+  "password": "password123"
+}</code></pre>
+                </div>
+                <div class="doc-navigation">
+                    <button class="nav-btn" onclick="navigateTo('angular')">← Previous</button>
+                    <button class="nav-btn" onclick="navigateTo('api-admin')">Next: Admin API →</button>
+                </div>
+            </div>
+
+            <!-- More pages as placeholders to ensure sidebar works -->
+            <div class="doc-page" id="api-admin"><div class="doc-header"><h2>Admin API</h2></div><div class="doc-navigation"><button class="nav-btn" onclick="navigateTo('api-auth')">← Previous</button></div></div>
+            <div class="doc-page" id="jwks"><div class="doc-header"><h2>JWKS & Security</h2></div><div class="doc-navigation"><button class="nav-btn" onclick="navigateTo('api-admin')">← Previous</button></div></div>
+            <div class="doc-page" id="subscriptions"><div class="doc-header"><h2>Subscriptions</h2></div><div class="doc-navigation"><button class="nav-btn" onclick="navigateTo('jwks')">← Previous</button></div></div>
+            <div class="doc-page" id="key-rotation"><div class="doc-header"><h2>Key Rotation</h2></div><div class="doc-navigation"><button class="nav-btn" onclick="navigateTo('subscriptions')">← Previous</button></div></div>
+            <div class="doc-page" id="audit-logs"><div class="doc-header"><h2>Audit Logs</h2></div><div class="doc-navigation"><button class="nav-btn" onclick="navigateTo('key-rotation')">← Previous</button></div></div>
         </main>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-vue.min.js"></script>
 
     <script>
         // Navigation
         function navigateTo(pageId) {
+            const targetPage = document.getElementById(pageId);
+            if (!targetPage) {
+                console.error(`Page not found: ${pageId}`);
+                return;
+            }
+
             // Hide all pages
             document.querySelectorAll('.doc-page').forEach(page => {
                 page.classList.remove('active');
             });
 
             // Show target page
-            document.getElementById(pageId).classList.add('active');
+            targetPage.classList.add('active');
 
             // Update sidebar
             document.querySelectorAll('.sidebar-item').forEach(item => {

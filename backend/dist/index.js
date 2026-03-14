@@ -115,19 +115,92 @@ app.post('/auth/login', tenantGuard, (req, res) => {
 });
 // Google OAuth Routes
 app.get('/auth/google', (req, res, next) => {
-    const { api_key, state } = req.query; // state should be the tenant_id or redirect_uri
+    const { api_key, state, google_client_id, google_client_secret, google_callback_url } = req.query;
+    // Check if dynamic credentials are provided
+    if (google_client_id && google_client_secret) {
+        console.log(`[Authify] Using dynamic Google credentials for tenant: ${api_key}`);
+        const callback = google_callback_url || `http://localhost:${PORT}/auth/google/callback`;
+        // Store creds in cookie for the callback to use
+        res.cookie('dynamic_google_creds', JSON.stringify({
+            clientId: google_client_id,
+            clientSecret: google_client_secret,
+            callbackURL: callback
+        }), { httpOnly: true, maxAge: 600000 }); // 10 minutes
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+            `response_type=code&` +
+            `client_id=${google_client_id}&` +
+            `redirect_uri=${encodeURIComponent(callback)}&` +
+            `scope=profile%20email&` +
+            `state=${state || api_key}`;
+        return res.redirect(authUrl);
+    }
+    // Fallback logic
+    console.warn(`[Authify] CAUTION: Tenant ${api_key || 'unknown'} is using fallback Google credentials. Consuming applications should provide their own clientId and clientSecret in configuration.`);
     passport.authenticate('google', {
         scope: ['profile', 'email'],
         state: state || api_key
     })(req, res, next);
 });
-app.get('/auth/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth_failed' }), (req, res) => {
-    const user = req.user;
-    const tenantId = req.query.state;
-    const token = signJWT({ uid: user.id, tid: tenantId }, jwks[0].kid);
-    // Redirect back to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+app.get('/auth/google/callback', async (req, res, next) => {
+    const dynamicCredsCookie = req.cookies.dynamic_google_creds;
+    if (dynamicCredsCookie && req.query.code) {
+        try {
+            const creds = JSON.parse(dynamicCredsCookie);
+            const { code, state: tenantId } = req.query;
+            // 1. Exchange code for access token
+            const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    code: code,
+                    client_id: creds.clientId,
+                    client_secret: creds.clientSecret,
+                    redirect_uri: creds.callbackURL,
+                    grant_type: 'authorization_code'
+                })
+            });
+            const tokens = await tokenResponse.json();
+            if (!tokens.access_token)
+                throw new Error('Token exchange failed');
+            // 2. Get user profile
+            const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${tokens.access_token}` }
+            });
+            const profile = await profileResponse.json();
+            // 3. Find or Create user
+            db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [profile.email, tenantId], (err, user) => {
+                const finalize = (u) => {
+                    const token = signJWT({ uid: u.id, tid: tenantId }, jwks[0].kid);
+                    res.clearCookie('dynamic_google_creds');
+                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+                    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+                };
+                if (user)
+                    return finalize(user);
+                const newUser = {
+                    id: 'u_' + crypto.randomBytes(4).toString('hex'),
+                    tenant_id: tenantId,
+                    email: profile.email,
+                    name: profile.name || profile.given_name,
+                    avatar_url: profile.picture
+                };
+                db.run('INSERT INTO users (id, tenant_id, email, name, avatar_url) VALUES (?, ?, ?, ?, ?)', [newUser.id, newUser.tenant_id, newUser.email, newUser.name, newUser.avatar_url], () => finalize(newUser));
+            });
+            return;
+        }
+        catch (error) {
+            console.error('[Authify] Dynamic OAuth Callback Error:', error);
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+        }
+    }
+    // Default Passport Fallback
+    passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth_failed' })(req, res, () => {
+        const user = req.user;
+        const tenantId = req.query.state;
+        const token = signJWT({ uid: user.id, tid: tenantId }, jwks[0].kid);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+    });
 });
 // Magic Link Route
 app.post('/auth/magic-link', tenantGuard, (req, res) => {
