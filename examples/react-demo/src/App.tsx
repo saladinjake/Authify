@@ -40,7 +40,7 @@ function App() {
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
                                 <SignIn />
                             </div>
-                            <button 
+                            <button
                                 onClick={login}
                                 style={{
                                     padding: '10px 20px',
