@@ -5,3 +5,5 @@ dist
 build
 .dist
 .build
+.angular
+.angular/cache
