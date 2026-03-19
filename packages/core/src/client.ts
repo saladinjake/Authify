@@ -150,6 +150,36 @@ export class AuthClient {
             throw err;
         }
     }
+
+    async forgotPassword(email: string): Promise<void> {
+        try {
+            this.store.setError(null);
+            await AuthApi.forgotPassword(email, this.config.apiKey);
+        } catch (err: any) {
+            this.store.setError(err.message || 'Failed to send reset code');
+            throw err;
+        }
+    }
+
+    async verifyResetCode(email: string, code: string): Promise<void> {
+        try {
+            this.store.setError(null);
+            await AuthApi.verifyResetCode(email, code, this.config.apiKey);
+        } catch (err: any) {
+            this.store.setError(err.message || 'Invalid or expired code');
+            throw err;
+        }
+    }
+
+    async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+        try {
+            this.store.setError(null);
+            await AuthApi.resetPassword(email, code, newPassword, this.config.apiKey);
+        } catch (err: any) {
+            this.store.setError(err.message || 'Failed to reset password');
+            throw err;
+        }
+    }
 }
 
 export function createAuthify(config: AuthConfig) {

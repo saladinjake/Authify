@@ -5,11 +5,19 @@ export const useAuth = () => {
     const client = useAuthClient();
     const state = useAuthState();
 
-    const signIn = useCallback((email: string) => client.signInWithEmail(email), [client]);
+    const signIn = useCallback((emailOrCreds: string | { email: string; password?: string }) => {
+        if (typeof emailOrCreds === 'string') {
+            return client.signInWithEmail(emailOrCreds);
+        }
+        return client.signIn(emailOrCreds);
+    }, [client]);
     const signOut = useCallback(() => client.signOut(), [client]);
     const signInWithProvider = useCallback((provider: 'google' | 'github') => client.signInWithProvider(provider), [client]);
 
     const verifyMFA = useCallback((code: string) => client.verifyMFA(code), [client]);
+    const forgotPassword = useCallback((email: string) => client.forgotPassword(email), [client]);
+    const verifyResetCode = useCallback((email: string, code: string) => client.verifyResetCode(email, code), [client]);
+    const resetPassword = useCallback((email: string, code: string, pass: string) => client.resetPassword(email, code, pass), [client]);
 
     return {
         status: state.status,
@@ -25,6 +33,9 @@ export const useAuth = () => {
         signOut,
         signInWithProvider,
         verifyMFA,
+        forgotPassword,
+        verifyResetCode,
+        resetPassword,
     };
 };
 
@@ -48,12 +59,7 @@ export const useGoogleAuth = () => {
         
         if (urlToken) {
             setToken(urlToken);
-            // Verify token if needed or leave it to dev. But the backend `/auth/google/callback`
-            // signs a JWT. We can use it as session token. 
-            // In fact, verifyMagicLink endpoint works for any valid JWT according to the backend `/auth/verify` route!
             client.verifyMagicLink(urlToken).catch(console.error);
-            
-            // Clean up URL
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, [client]);

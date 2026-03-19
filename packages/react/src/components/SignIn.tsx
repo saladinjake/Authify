@@ -1,24 +1,47 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks';
+import { ForgotPassword } from './ForgotPassword';
+import { ResetPassword } from './ResetPassword';
 
 export const SignIn = () => {
     const { signIn, signInWithProvider, error, isLoaded, isAwaitingVerification } = useAuth();
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [view, setView] = useState<'signin' | 'forgot' | 'reset'>('signin');
+    const [resetEmail, setResetEmail] = useState('');
 
     if (!isLoaded) return <div>Loading...</div>;
 
-    const handleEmailLogin = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await signIn(email);
+            await signIn({ email, password });
         } catch (err) {
             // Error handled by store/hook
         } finally {
             setLoading(false);
         }
     };
+
+    if (view === 'forgot') {
+        return <ForgotPassword 
+            onBack={() => setView('signin')} 
+            onSent={(mail) => {
+                setResetEmail(mail);
+                setView('reset');
+            }} 
+        />;
+    }
+
+    if (view === 'reset') {
+        return <ResetPassword 
+            email={resetEmail} 
+            onBack={() => setView('signin')}
+            onSuccess={() => setView('signin')}
+        />;
+    }
 
     if (isAwaitingVerification) {
         return (
@@ -45,7 +68,7 @@ export const SignIn = () => {
             <h2 className="authify-title">Sign In</h2>
             {error && <div className="authify-error">{error}</div>}
 
-            <form onSubmit={handleEmailLogin}>
+            <form onSubmit={handleLogin}>
                 <div className="authify-input-group">
                     <label className="authify-label">Email</label>
                     <input
@@ -57,12 +80,31 @@ export const SignIn = () => {
                         placeholder="you@example.com"
                     />
                 </div>
+                <div className="authify-input-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <label className="authify-label">Password</label>
+                        <button 
+                            type="button"
+                            onClick={() => setView('forgot')}
+                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--authify-primary-color)', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                            Forgot password?
+                        </button>
+                    </div>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="authify-input"
+                        placeholder="••••••••"
+                    />
+                </div>
                 <button
                     type="submit"
                     disabled={loading}
                     className="authify-btn authify-btn-primary"
                 >
-                    {loading ? 'Sending Magic Link...' : 'Continue with Email'}
+                    {loading ? 'Signing in...' : (password ? 'Sign In' : 'Continue with Email')}
                 </button>
             </form>
 

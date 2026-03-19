@@ -113,22 +113,22 @@ export class AuthApi {
         }
 
         // Fallback: Query parameters
-        let url = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
+        let url = `${BACKEND_URL}/auth/${provider}?state=${encodeURIComponent(clientId)}`;
 
         if (extra?.apiKey) {
-            url += `&api_key=${extra.apiKey}`;
+            url += `&api_key=${encodeURIComponent(extra.apiKey)}`;
         }
 
         if (provider === 'google' && extra) {
-            if (extra.googleClientId) url += `&google_client_id=${extra.googleClientId}`;
-            if (extra.googleClientSecret) url += `&google_client_secret=${extra.googleClientSecret}`;
-            if (extra.googleCallbackUrl) url += `&google_callback_url=${extra.googleCallbackUrl}`;
+            if (extra.googleClientId) url += `&google_client_id=${encodeURIComponent(extra.googleClientId)}`;
+            if (extra.googleClientSecret) url += `&google_client_secret=${encodeURIComponent(extra.googleClientSecret)}`;
+            if (extra.googleCallbackUrl) url += `&google_callback_url=${encodeURIComponent(extra.googleCallbackUrl)}`;
         }
 
         if (provider === 'github' && extra) {
-            if (extra.githubClientId) url += `&github_client_id=${extra.githubClientId}`;
-            if (extra.githubClientSecret) url += `&github_client_secret=${extra.githubClientSecret}`;
-            if (extra.githubCallbackUrl) url += `&github_callback_url=${extra.githubCallbackUrl}`;
+            if (extra.githubClientId) url += `&github_client_id=${encodeURIComponent(extra.githubClientId)}`;
+            if (extra.githubClientSecret) url += `&github_client_secret=${encodeURIComponent(extra.githubClientSecret)}`;
+            if (extra.githubCallbackUrl) url += `&github_callback_url=${encodeURIComponent(extra.githubCallbackUrl)}`;
         }
 
         window.location.href = url;
@@ -188,5 +188,53 @@ export class AuthApi {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Upgrade failed');
         return data;
+    }
+
+    static async forgotPassword(email: string, apiKey: string): Promise<void> {
+        const res = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            },
+            body: JSON.stringify({ email })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to send reset code');
+        }
+    }
+
+    static async verifyResetCode(email: string, code: string, apiKey: string): Promise<void> {
+        const res = await fetch(`${BACKEND_URL}/auth/verify-reset-code`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            },
+            body: JSON.stringify({ email, code })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Invalid or expired code');
+        }
+    }
+
+    static async resetPassword(email: string, code: string, newPassword: string, apiKey: string): Promise<void> {
+        const res = await fetch(`${BACKEND_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            },
+            body: JSON.stringify({ email, code, newPassword })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to reset password');
+        }
     }
 }

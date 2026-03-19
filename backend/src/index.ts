@@ -1,4 +1,5 @@
 import express from 'express';
+import session from 'express-session';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import passport from 'passport';
@@ -8,13 +9,33 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import { db, initDb } from './db.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Unified Env Access
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || process.env.VITE_GOOGLE_CLIENT_SECRET;
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || process.env.VITE_GOOGLE_CALLBACK_URL;
+
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || process.env.VITE_GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || process.env.VITE_GITHUB_CLIENT_SECRET;
+const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || process.env.VITE_GITHUB_CALLBACK_URL;
+
 const JWT_SECRET = process.env.JWT_SECRET || 'authify-super-secret-key';
+
+// Nodemailer setup
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
+});
 
 // KEY ROTATION (JWKS)
 let activeKey = crypto.randomBytes(32).toString('hex');
@@ -83,22 +104,41 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(session({
+    secret: 'authify-session-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // Set to true if using HTTPS
+}));
 app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser((id: string, done) => {
+    db.get('SELECT * FROM users WHERE id = ?', [id], (err: any, user: any) => {
+        done(err, user);
+    });
+});
 
 // Passport setup (Google)
 // Note: In a real multi-tenant app, you'd use the tenant's own Google credentials
 // but for MVP we use our shared ones.
-console.log('[Authify] Google Client ID:', process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 10) + '...' : 'Not Set');
-console.log('[Authify] Callback URL:', `http://localhost:${PORT}/auth/google/callback`);
+console.log('[Authify] Google Client ID:', GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.substring(0, 10) + '...' : 'MISSING (Check .env)');
+console.log('[Authify] Callback URL:', GOOGLE_CALLBACK_URL || `http://localhost:${PORT}/auth/google/callback`);
 
 passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID || 'DU_CLIENT_ID',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'DUMMY_SECRET',
-    callbackURL: `http://localhost:${PORT}/auth/google/callback`,
+    clientID: (GOOGLE_CLIENT_ID || 'dummy_id') as string,
+    clientSecret: (GOOGLE_CLIENT_SECRET || 'dummy_secret') as string,
+    callbackURL: GOOGLE_CALLBACK_URL || `http://localhost:${PORT}/auth/google/callback`,
     passReqToCallback: true
 },
     async (req: any, accessToken, refreshToken, profile, done) => {
-        const email = profile.emails?.[0].value;
+        const email = profile.emails?.[0]?.value;
+        if (!email) return done(new Error('No email found in Google profile'));
+        
         const tenantId = req.query.state; // We use state to pass tenant_id through OAuth
 
         db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err: any, user: any) => {
@@ -125,13 +165,15 @@ passport.use(new GoogleStrategy({
 ));
 
 passport.use(new GitHubStrategy({
-    clientID: process.env.GITHUB_CLIENT_ID || 'DUMMY_GITHUB_ID',
-    clientSecret: process.env.GITHUB_CLIENT_SECRET || 'DUMMY_GITHUB_SECRET',
-    callbackURL: `http://localhost:${PORT}/auth/github/callback`,
+    clientID: GITHUB_CLIENT_ID || 'DUMMY_GITHUB_ID',
+    clientSecret: GITHUB_CLIENT_SECRET || 'DUMMY_GITHUB_SECRET',
+    callbackURL: GITHUB_CALLBACK_URL || `http://localhost:${PORT}/auth/github/callback`,
     passReqToCallback: true
 },
-    async (req: any, accessToken, refreshToken, profile, done) => {
-        const email = profile.emails?.[0]?.value || profile.username || profile.id;
+    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
+        let email = profile.emails?.[0]?.value || profile.username || profile.id;
+        if (!email) return done(new Error('No email or handle found with GitHub profile'));
+        
         const tenantId = req.query.state;
 
         db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err: any, user: any) => {
@@ -210,11 +252,11 @@ app.post('/auth/login', tenantGuard, (req: any, res) => {
 // 1. Generic OAuth Initiation Route
 app.all('/auth/:provider', (req: any, res, next) => {
     const { provider } = req.params;
-    
+
     // Extract credentials from headers or query
     const api_key = req.headers['x-api-key'] || req.headers['X-API-KEY'] || req.query.api_key;
     const state = req.headers['x-state'] || req.headers['x-client-id'] || req.query.state || api_key;
-    
+
     const google_client_id = req.headers['x-google-client-id'] || req.query.google_client_id;
     const google_client_secret = req.headers['x-google-client-secret'] || req.query.google_client_secret;
     const google_callback_url = req.headers['x-google-callback-url'] || req.query.google_callback_url;
@@ -224,7 +266,7 @@ app.all('/auth/:provider', (req: any, res, next) => {
     const github_callback_url = req.headers['x-github-callback-url'] || req.query.github_callback_url;
 
     const frontend_url = req.headers['x-frontend-url'] || req.headers['X-FRONTEND-URL'] || req.query.frontend_url;
-    
+
     const isAjax = req.method === 'POST' || req.headers['x-requested-with'] === 'XMLHttpRequest';
 
     if (frontend_url) {
@@ -239,8 +281,8 @@ app.all('/auth/:provider', (req: any, res, next) => {
     // Dynamic Google credentials
     if (provider === 'google' && google_client_id && google_client_secret) {
         console.log(`[Authify] Using dynamic Google credentials for tenant: ${api_key}`);
-        const callback = google_callback_url || `http://localhost:${PORT}/auth/google/callback`;
-        
+        const callback = google_callback_url || GOOGLE_CALLBACK_URL || `http://localhost:${PORT}/auth/google/callback`;
+
         res.cookie('dynamic_creds', JSON.stringify({
             provider: 'google',
             clientId: google_client_id,
@@ -248,21 +290,21 @@ app.all('/auth/:provider', (req: any, res, next) => {
             callbackURL: callback
         }), { httpOnly: true, maxAge: 600000 });
 
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
             `response_type=code&` +
             `client_id=${google_client_id}&` +
             `redirect_uri=${encodeURIComponent(callback)}&` +
             `scope=profile%20email&` +
             `state=${state}`;
-        
+
         return deliver(authUrl);
     }
 
     // Dynamic GitHub credentials
     if (provider === 'github' && github_client_id && github_client_secret) {
         console.log(`[Authify] Using dynamic GitHub credentials for tenant: ${api_key}`);
-        const callback = github_callback_url || `http://localhost:${PORT}/auth/github/callback`;
-        
+        const callback = github_callback_url || GITHUB_CALLBACK_URL || `http://localhost:${PORT}/auth/github/callback`;
+
         res.cookie('dynamic_creds', JSON.stringify({
             provider: 'github',
             clientId: github_client_id,
@@ -270,12 +312,12 @@ app.all('/auth/:provider', (req: any, res, next) => {
             callbackURL: callback
         }), { httpOnly: true, maxAge: 600000 });
 
-        const authUrl = `https://github.com/login/oauth/authorize?` + 
+        const authUrl = `https://github.com/login/oauth/authorize?` +
             `client_id=${github_client_id}&` +
             `redirect_uri=${encodeURIComponent(callback)}&` +
             `scope=user:email&` +
             `state=${state}`;
-        
+
         return deliver(authUrl);
     }
 
@@ -291,7 +333,7 @@ app.all('/auth/:provider', (req: any, res, next) => {
 app.get('/auth/:provider/callback', async (req: any, res, next) => {
     const { provider } = req.params;
     const dynamicCredsCookie = req.cookies.dynamic_creds;
-    
+
     if (dynamicCredsCookie && req.query.code) {
         try {
             const creds = JSON.parse(dynamicCredsCookie);
@@ -301,6 +343,9 @@ app.get('/auth/:provider/callback', async (req: any, res, next) => {
             let profile: any;
 
             if (provider === 'google') {
+                console.log(`[Authify] Exchanging code for ${provider} token...`);
+                console.log(`[Authify] Redirect URI used: ${creds.callbackURL}`);
+
                 const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -313,7 +358,11 @@ app.get('/auth/:provider/callback', async (req: any, res, next) => {
                     })
                 });
                 const tokens: any = await tokenResponse.json();
-                if (!tokens.access_token) throw new Error('Google token exchange failed');
+                console.log(`[Authify] ${provider} token response status:`, tokenResponse.status);
+                if (!tokens.access_token) {
+                    console.error(`[Authify] ${provider} token exchange failed:`, tokens);
+                    throw new Error('Google token exchange failed');
+                }
 
                 const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                     headers: { Authorization: `Bearer ${tokens.access_token}` }
@@ -337,7 +386,7 @@ app.get('/auth/:provider/callback', async (req: any, res, next) => {
                     headers: { Authorization: `Bearer ${tokens.access_token}` }
                 });
                 profile = await profileResponse.json();
-                
+
                 // Fetch email if not public
                 if (!profile.email) {
                     const emailResponse = await fetch('https://api.github.com/user/emails', {
@@ -394,15 +443,98 @@ app.get('/auth/:provider/callback', async (req: any, res, next) => {
 });
 
 // Magic Link Route
-app.post('/auth/magic-link', tenantGuard, (req: any, res) => {
+app.post('/auth/magic-link', tenantGuard, async (req: any, res) => {
     const { email } = req.body;
     const tenant = req.tenant;
 
-    // In a real app, send an email. For MVP, we just return the link or simulate success.
     const token = jwt.sign({ email, tid: tenant.id }, JWT_SECRET, { expiresIn: '15m' });
-    console.log(`[Authify] Magic Link generated for ${email}: /auth/verify?token=${token}`);
+    const magicLink = `${process.env.FRONTEND_URL || 'http://localhost:4200'}/auth/verify?token=${token}`;
 
-    res.json({ message: 'MAGIC_LINK_SENT', debug_token: token });
+    console.log(`[Authify] Magic Link generated for ${email}: ${magicLink}`);
+
+    try {
+        await transporter.sendMail({
+            from: `"Authify" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: 'Your Magic Login Link',
+            html: `<p>Click <a href="${magicLink}">here</a> to login to your account. This link expires in 15 minutes.</p>`
+        });
+        res.json({ message: 'MAGIC_LINK_SENT' });
+    } catch (error) {
+        console.error('[Authify] Failed to send Magic Link:', error);
+        res.status(500).json({ error: 'FAILED_TO_SEND_EMAIL' });
+    }
+});
+
+// Forgot Password Route
+app.post('/auth/forgot-password', tenantGuard, async (req: any, res) => {
+    const { email } = req.body;
+    const tenant = req.tenant;
+
+    db.get('SELECT * FROM users WHERE email = ? AND tenant_id = ?', [email, tenant.id], async (err: any, user: any) => {
+        if (!user) {
+            // We return success even if user not found for security reasons (prevent enumeration)
+            return res.json({ message: 'RESET_CODE_SENT' });
+        }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = Date.now() + 600000; // 10 minutes
+
+        db.run('INSERT INTO password_resets (email, tenant_id, code, expires_at) VALUES (?, ?, ?, ?)',
+            [email, tenant.id, code, expiresAt],
+            async () => {
+                try {
+                    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:4200'}`;
+                    await transporter.sendMail({
+                        from: `"Authify" <${process.env.SMTP_USER}>`,
+                        to: email,
+                        subject: 'Password Reset Code',
+                        html: `
+                            <p>Your password reset code is: <b>${code}</b></p>
+                            <p>Enter this code on the reset page: <a href="${resetLink}">${resetLink}</a></p>
+                            <p>This code expires in 10 minutes.</p>
+                        `
+                    });
+                    res.json({ message: 'RESET_CODE_SENT' });
+                } catch (error) {
+                    console.error('[Authify] Failed to send Reset Code:', error);
+                    res.status(500).json({ error: 'FAILED_TO_SEND_EMAIL' });
+                }
+            }
+        );
+    });
+});
+
+// Verify Reset Code Route
+app.post('/auth/verify-reset-code', tenantGuard, (req: any, res) => {
+    const { email, code } = req.body;
+    const tenant = req.tenant;
+
+    db.get('SELECT * FROM password_resets WHERE email = ? AND tenant_id = ? AND code = ?', [email, tenant.id, code], (err: any, row: any) => {
+        if (!row || row.expires_at < Date.now()) {
+            return res.status(400).json({ error: 'INVALID_OR_EXPIRED_CODE' });
+        }
+        res.json({ message: 'CODE_VERIFIED' });
+    });
+});
+
+// Reset Password Route
+app.post('/auth/reset-password', tenantGuard, (req: any, res) => {
+    const { email, code, newPassword } = req.body;
+    const tenant = req.tenant;
+
+    db.get('SELECT * FROM password_resets WHERE email = ? AND tenant_id = ? AND code = ?', [email, tenant.id, code], async (err: any, row: any) => {
+        if (!row || row.expires_at < Date.now()) {
+            return res.status(400).json({ error: 'INVALID_OR_EXPIRED_CODE' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        db.run('UPDATE users SET password = ? WHERE email = ? AND tenant_id = ?', [hashedPassword, email, tenant.id], () => {
+             // Clear reset code
+             db.run('DELETE FROM password_resets WHERE email = ? AND tenant_id = ?', [email, tenant.id]);
+             res.json({ message: 'PASSWORD_RESET_SUCCESS' });
+        });
+    });
 });
 
 app.get('/auth/verify', (req: any, res) => {

@@ -12,7 +12,7 @@ app.use(AuthifyPlugin, {
         domain: 'localhost:5000',
         googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
         googleClientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
-        googleCallbackUrl: import.meta.env.VITE_GOOGLE_CALLBACK_URL || 'http://localhost:4200/auth/callback'
+        googleCallbackUrl: import.meta.env.VITE_GOOGLE_CALLBACK_URL || 'http://localhost:5000/auth/google/callback'
     }
 })
 

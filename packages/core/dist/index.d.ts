@@ -81,6 +81,9 @@ declare class AuthClient {
         name: string;
     }): Promise<void>;
     verifyMFA(code: string): Promise<void>;
+    forgotPassword(email: string): Promise<void>;
+    verifyResetCode(email: string, code: string): Promise<void>;
+    resetPassword(email: string, code: string, newPassword: string): Promise<void>;
 }
 declare function createAuthify(config: AuthConfig): AuthClient;
 
@@ -104,6 +107,9 @@ declare class AuthApi {
     static validateSession(token: string, apiKey: string): Promise<AuthSession>;
     static getTenant(apiKey: string): Promise<any>;
     static upgradePlan(reference: string, apiKey: string): Promise<any>;
+    static forgotPassword(email: string, apiKey: string): Promise<void>;
+    static verifyResetCode(email: string, code: string, apiKey: string): Promise<void>;
+    static resetPassword(email: string, code: string, newPassword: string, apiKey: string): Promise<void>;
 }
 
 export { AuthApi, AuthClient, type AuthConfig, type AuthSession, type AuthState, type AuthStatus, AuthStore, type AuthTheme, type MFAChallenge, type User, createAuthify, createStore };

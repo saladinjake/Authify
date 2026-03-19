@@ -2,6 +2,8 @@ import { NgModule, ModuleWithProviders } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SignInComponent } from './signin.component';
+import { ForgotPasswordComponent } from './forgot-password.component';
+import { ResetPasswordComponent } from './reset-password.component';
 import { SignUpComponent } from './signup.component';
 import { UserProfileComponent } from './user-profile.component';
 import { UserButtonComponent } from './user-button.component';
@@ -11,6 +13,8 @@ import { AuthConfig } from '@authify/core';
 @NgModule({
     declarations: [
         SignInComponent,
+        ForgotPasswordComponent,
+        ResetPasswordComponent,
         SignUpComponent,
         UserProfileComponent,
         UserButtonComponent
@@ -21,6 +25,8 @@ import { AuthConfig } from '@authify/core';
     ],
     exports: [
         SignInComponent,
+        ForgotPasswordComponent,
+        ResetPasswordComponent,
         SignUpComponent,
         UserProfileComponent,
         UserButtonComponent

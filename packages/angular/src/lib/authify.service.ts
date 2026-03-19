@@ -57,6 +57,18 @@ export class AuthifyService {
         return this.client.verifyMFA(code);
     }
 
+    async forgotPassword(email: string): Promise<void> {
+        return this.client.forgotPassword(email);
+    }
+
+    async verifyResetCode(email: string, code: string): Promise<void> {
+        return this.client.verifyResetCode(email, code);
+    }
+
+    async resetPassword(email: string, code: string, pass: string): Promise<void> {
+        return this.client.resetPassword(email, code, pass);
+    }
+
     getConfig() {
         return this.client.getConfig();
     }

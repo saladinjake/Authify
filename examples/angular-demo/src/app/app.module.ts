@@ -18,9 +18,9 @@ import { AuthifyModule } from '@authify/angular';
             clientId: 'dev_tenant_1',
             apiKey: 'dev_api_key_123',
             domain: 'localhost:5000',
-            googleClientId: 'dummy_client_id',
-            googleClientSecret: 'dummy_secret',
-            googleCallbackUrl: 'http://localhost:4200/auth/callback',
+            googleClientId: '', // Add your client ID to .env
+            googleClientSecret: '', // Add your client secret to .env
+            googleCallbackUrl: 'http://localhost:5000/auth/google/callback',
             theme: {
                 primaryColor: '#6366f1', // Indigo
                 borderRadius: '12px'

@@ -85,19 +85,19 @@ var AuthApi = class {
     } catch (err) {
       console.warn("[Authify] Header-based auth initiation failed, falling back to query params", err);
     }
-    let url = `${BACKEND_URL}/auth/${provider}?state=${clientId}`;
+    let url = `${BACKEND_URL}/auth/${provider}?state=${encodeURIComponent(clientId)}`;
     if (extra == null ? void 0 : extra.apiKey) {
-      url += `&api_key=${extra.apiKey}`;
+      url += `&api_key=${encodeURIComponent(extra.apiKey)}`;
     }
     if (provider === "google" && extra) {
-      if (extra.googleClientId) url += `&google_client_id=${extra.googleClientId}`;
-      if (extra.googleClientSecret) url += `&google_client_secret=${extra.googleClientSecret}`;
-      if (extra.googleCallbackUrl) url += `&google_callback_url=${extra.googleCallbackUrl}`;
+      if (extra.googleClientId) url += `&google_client_id=${encodeURIComponent(extra.googleClientId)}`;
+      if (extra.googleClientSecret) url += `&google_client_secret=${encodeURIComponent(extra.googleClientSecret)}`;
+      if (extra.googleCallbackUrl) url += `&google_callback_url=${encodeURIComponent(extra.googleCallbackUrl)}`;
     }
     if (provider === "github" && extra) {
-      if (extra.githubClientId) url += `&github_client_id=${extra.githubClientId}`;
-      if (extra.githubClientSecret) url += `&github_client_secret=${extra.githubClientSecret}`;
-      if (extra.githubCallbackUrl) url += `&github_callback_url=${extra.githubCallbackUrl}`;
+      if (extra.githubClientId) url += `&github_client_id=${encodeURIComponent(extra.githubClientId)}`;
+      if (extra.githubClientSecret) url += `&github_client_secret=${encodeURIComponent(extra.githubClientSecret)}`;
+      if (extra.githubCallbackUrl) url += `&github_callback_url=${encodeURIComponent(extra.githubCallbackUrl)}`;
     }
     window.location.href = url;
   }
@@ -148,6 +148,48 @@ var AuthApi = class {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Upgrade failed");
     return data;
+  }
+  static async forgotPassword(email, apiKey) {
+    const res = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": apiKey
+      },
+      body: JSON.stringify({ email })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Failed to send reset code");
+    }
+  }
+  static async verifyResetCode(email, code, apiKey) {
+    const res = await fetch(`${BACKEND_URL}/auth/verify-reset-code`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": apiKey
+      },
+      body: JSON.stringify({ email, code })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Invalid or expired code");
+    }
+  }
+  static async resetPassword(email, code, newPassword, apiKey) {
+    const res = await fetch(`${BACKEND_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": apiKey
+      },
+      body: JSON.stringify({ email, code, newPassword })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Failed to reset password");
+    }
   }
 };
 
@@ -396,6 +438,33 @@ var AuthClient = class {
       this.store.setSession(session);
     } catch (err) {
       this.store.setError(err.message || "MFA verification failed");
+      throw err;
+    }
+  }
+  async forgotPassword(email) {
+    try {
+      this.store.setError(null);
+      await AuthApi.forgotPassword(email, this.config.apiKey);
+    } catch (err) {
+      this.store.setError(err.message || "Failed to send reset code");
+      throw err;
+    }
+  }
+  async verifyResetCode(email, code) {
+    try {
+      this.store.setError(null);
+      await AuthApi.verifyResetCode(email, code, this.config.apiKey);
+    } catch (err) {
+      this.store.setError(err.message || "Invalid or expired code");
+      throw err;
+    }
+  }
+  async resetPassword(email, code, newPassword) {
+    try {
+      this.store.setError(null);
+      await AuthApi.resetPassword(email, code, newPassword, this.config.apiKey);
+    } catch (err) {
+      this.store.setError(err.message || "Failed to reset password");
       throw err;
     }
   }

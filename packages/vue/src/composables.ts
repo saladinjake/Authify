@@ -19,9 +19,12 @@ export function useAuth() {
         status: computed(() => state.status),
 
         // Actions
-        signIn: client.signInWithEmail.bind(client),
+        signIn: client.signIn.bind(client),
         signOut: client.signOut.bind(client),
         signInWithProvider: client.signInWithProvider.bind(client),
+        forgotPassword: client.forgotPassword.bind(client),
+        verifyResetCode: client.verifyResetCode.bind(client),
+        resetPassword: client.resetPassword.bind(client),
     };
 }
 
